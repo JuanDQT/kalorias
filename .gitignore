@@ -1,0 +1,25 @@
+# Xcode / Swift
+DerivedData/
+build/
+.build/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+xcuserdata/
+*.moved-aside
+*.pbxuser
+!default.pbxuser
+*.xcuserstate
+*.swiftpm/
+Packages/
+
+# macOS
+.DS_Store
+
+# Misc
+*.log
+*.tmp
+*.swp
+
+# Secrets (never commit the real key)
+Config/Secrets.xcconfig

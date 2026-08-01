@@ -6,8 +6,66 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		0FE417819C9B5B65ED7DAD2D /* MealDateFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10F03FCA615C002B53960F4 /* MealDateFormattingTests.swift */; };
+		1CCC4AC8042DBC045B75052E /* DailyTallyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52CB37E1E6D1AAFADA9B5966 /* DailyTallyTests.swift */; };
+		41DEB71D3CC969D6991FD2FC /* ImageStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE3C30E58FB131396AB1D84 /* ImageStoreTests.swift */; };
+		42D1721C0C46A0581FF44EA1 /* CaptureSessionStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4BD00063BB8FC158F019A8F /* CaptureSessionStateTests.swift */; };
+		500E4D51488B83C3150CDE69 /* CalorieAnalysisStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 631331136C5161E3B5B78445 /* CalorieAnalysisStoreTests.swift */; };
+		51707235A52AEE4473266048 /* CalorieAnalysisDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CA284B0462AABD85A34870A /* CalorieAnalysisDecodingTests.swift */; };
+		576673AE65FB49A9E671006E /* FoodRegionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C080355026E1858059D3A5B /* FoodRegionTests.swift */; };
+		67C23E58E79382650382C0A1 /* CalorieColorScaleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB072700AC595051D26D73C /* CalorieColorScaleTests.swift */; };
+		69EAFBC91453A8F35308C54F /* ImageCropperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64C31AE1A8EFA1645FF0A0E2 /* ImageCropperTests.swift */; };
+		70E1626F6D870E6236172788 /* MealWeekGroupingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26BF7B3E48E053698D54F1BE /* MealWeekGroupingTests.swift */; };
+		75FDB9EEAB4947568C53EBB0 /* CalorieAnalysisErrorMappingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20DA6774F7280DF338939A77 /* CalorieAnalysisErrorMappingTests.swift */; };
+		8B1AC5066C1AB57493CF187A /* PeriodChangeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9E081CDEBB98D9B25DB6C05 /* PeriodChangeTests.swift */; };
+		8BD8190439244D6C1D74BB4A /* MealTitleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9696D3461DEC74C21A1A2B1 /* MealTitleTests.swift */; };
+		A8C41FDC00DA567D180D1D9B /* RouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B40AAA04B70322986D17B070 /* RouterTests.swift */; };
+		AF8CB68CB138F0D4ED4C24F0 /* MealHistoryRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52EEC44D4F3C1854B5C5ADBA /* MealHistoryRepositoryTests.swift */; };
+		CF7E0DA6CC2EFD516D8B9553 /* WeekSummaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BD6DEA9F3B5745B2E5DA70D /* WeekSummaryTests.swift */; };
+		5C8789A05E6F93B239595FAD /* CameraZoomTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAB8BC97C52F4B76D35CD447 /* CameraZoomTests.swift */; };
+		D75053ED3A198FDEBF3DDC6E /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3BA056E9027A8BEFE4710E0B /* Foundation.framework */; };
+		E9B96118AC7FD8F2ED369635 /* CameraPermissionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5C5EB66EB71AF4B2D4A0A99 /* CameraPermissionStoreTests.swift */; };
+		FD4173B2D6CFC475AAC94935 /* CalorieAggregatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 403982DD4E90D12608102ED0 /* CalorieAggregatorTests.swift */; };
+		FDE910E0590F159EB58CEA84 /* SendFrameTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34FC144A87B4C88E852B4E12 /* SendFrameTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		C3EA4E594289C285871DB2F6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6178BB7F30136C7300BA6198 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6178BB8630136C7300BA6198;
+			remoteInfo = Kalorias;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		0CA284B0462AABD85A34870A /* CalorieAnalysisDecodingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalorieAnalysisDecodingTests.swift; sourceTree = "<group>"; };
+		20DA6774F7280DF338939A77 /* CalorieAnalysisErrorMappingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalorieAnalysisErrorMappingTests.swift; sourceTree = "<group>"; };
+		26BF7B3E48E053698D54F1BE /* MealWeekGroupingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MealWeekGroupingTests.swift; sourceTree = "<group>"; };
+		2BD6DEA9F3B5745B2E5DA70D /* WeekSummaryTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WeekSummaryTests.swift; sourceTree = "<group>"; };
+		3043D3DA4E0E31AFE339A78A /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		34FC144A87B4C88E852B4E12 /* SendFrameTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SendFrameTests.swift; sourceTree = "<group>"; };
+		3BA056E9027A8BEFE4710E0B /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		403982DD4E90D12608102ED0 /* CalorieAggregatorTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalorieAggregatorTests.swift; sourceTree = "<group>"; };
+		4C080355026E1858059D3A5B /* FoodRegionTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FoodRegionTests.swift; sourceTree = "<group>"; };
+		4CB072700AC595051D26D73C /* CalorieColorScaleTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalorieColorScaleTests.swift; sourceTree = "<group>"; };
+		4EE3C30E58FB131396AB1D84 /* ImageStoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ImageStoreTests.swift; sourceTree = "<group>"; };
+		52CB37E1E6D1AAFADA9B5966 /* DailyTallyTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DailyTallyTests.swift; sourceTree = "<group>"; };
+		52EEC44D4F3C1854B5C5ADBA /* MealHistoryRepositoryTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MealHistoryRepositoryTests.swift; sourceTree = "<group>"; };
+		60FAE056C4A9AD1F6CBF807F /* KaloriasTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KaloriasTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6178BB8730136C7300BA6198 /* Kalorias.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kalorias.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		631331136C5161E3B5B78445 /* CalorieAnalysisStoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalorieAnalysisStoreTests.swift; sourceTree = "<group>"; };
+		64C31AE1A8EFA1645FF0A0E2 /* ImageCropperTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ImageCropperTests.swift; sourceTree = "<group>"; };
+		A599FB91BE8AF0AFED08F160 /* Secrets.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
+		B10F03FCA615C002B53960F4 /* MealDateFormattingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MealDateFormattingTests.swift; sourceTree = "<group>"; };
+		B40AAA04B70322986D17B070 /* RouterTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RouterTests.swift; sourceTree = "<group>"; };
+		C9E081CDEBB98D9B25DB6C05 /* PeriodChangeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PeriodChangeTests.swift; sourceTree = "<group>"; };
+		D4BD00063BB8FC158F019A8F /* CaptureSessionStateTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CaptureSessionStateTests.swift; sourceTree = "<group>"; };
+		E5C5EB66EB71AF4B2D4A0A99 /* CameraPermissionStoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CameraPermissionStoreTests.swift; sourceTree = "<group>"; };
+		CAB8BC97C52F4B76D35CD447 /* CameraZoomTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CameraZoomTests.swift; sourceTree = "<group>"; };
+		E9696D3461DEC74C21A1A2B1 /* MealTitleTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MealTitleTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -19,6 +77,14 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		41E7DEC580F4D85995774BC6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D75053ED3A198FDEBF3DDC6E /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		6178BB8430136C7300BA6198 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -29,11 +95,49 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		3507425D5B0D4EAC3C6970DD /* KaloriasTests */ = {
+			isa = PBXGroup;
+			children = (
+				B40AAA04B70322986D17B070 /* RouterTests.swift */,
+				E5C5EB66EB71AF4B2D4A0A99 /* CameraPermissionStoreTests.swift */,
+				D4BD00063BB8FC158F019A8F /* CaptureSessionStateTests.swift */,
+				403982DD4E90D12608102ED0 /* CalorieAggregatorTests.swift */,
+				0CA284B0462AABD85A34870A /* CalorieAnalysisDecodingTests.swift */,
+				631331136C5161E3B5B78445 /* CalorieAnalysisStoreTests.swift */,
+				20DA6774F7280DF338939A77 /* CalorieAnalysisErrorMappingTests.swift */,
+				4EE3C30E58FB131396AB1D84 /* ImageStoreTests.swift */,
+				52EEC44D4F3C1854B5C5ADBA /* MealHistoryRepositoryTests.swift */,
+				E9696D3461DEC74C21A1A2B1 /* MealTitleTests.swift */,
+				CAB8BC97C52F4B76D35CD447 /* CameraZoomTests.swift */,
+				34FC144A87B4C88E852B4E12 /* SendFrameTests.swift */,
+				64C31AE1A8EFA1645FF0A0E2 /* ImageCropperTests.swift */,
+				4C080355026E1858059D3A5B /* FoodRegionTests.swift */,
+				2BD6DEA9F3B5745B2E5DA70D /* WeekSummaryTests.swift */,
+				C9E081CDEBB98D9B25DB6C05 /* PeriodChangeTests.swift */,
+				52CB37E1E6D1AAFADA9B5966 /* DailyTallyTests.swift */,
+				B10F03FCA615C002B53960F4 /* MealDateFormattingTests.swift */,
+				26BF7B3E48E053698D54F1BE /* MealWeekGroupingTests.swift */,
+				4CB072700AC595051D26D73C /* CalorieColorScaleTests.swift */,
+			);
+			path = KaloriasTests;
+			sourceTree = SOURCE_ROOT;
+		};
+		58B44CFC862B98753C27FDA3 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				3BA056E9027A8BEFE4710E0B /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
 		6178BB7E30136C7300BA6198 = {
 			isa = PBXGroup;
 			children = (
 				6178BB8930136C7300BA6198 /* Kalorias */,
 				6178BB8830136C7300BA6198 /* Products */,
+				6270851A614045BC54E04EF6 /* Frameworks */,
+				3507425D5B0D4EAC3C6970DD /* KaloriasTests */,
+				FCFD146975D9EED6844BD8DC /* Config */,
 			);
 			sourceTree = "<group>";
 		};
@@ -41,13 +145,49 @@
 			isa = PBXGroup;
 			children = (
 				6178BB8730136C7300BA6198 /* Kalorias.app */,
+				60FAE056C4A9AD1F6CBF807F /* KaloriasTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
+		6270851A614045BC54E04EF6 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				58B44CFC862B98753C27FDA3 /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		FCFD146975D9EED6844BD8DC /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				A599FB91BE8AF0AFED08F160 /* Secrets.xcconfig */,
+				3043D3DA4E0E31AFE339A78A /* Info.plist */,
+			);
+			path = Config;
+			sourceTree = SOURCE_ROOT;
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		522949B1A88BB935AB14FF4D /* KaloriasTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DD8E6D5E9A74F1CBD5919B84 /* Build configuration list for PBXNativeTarget "KaloriasTests" */;
+			buildPhases = (
+				0D3D86100A8C2746F59AA378 /* Sources */,
+				41E7DEC580F4D85995774BC6 /* Frameworks */,
+				E9A1D544C6124CC6DABF7A2C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				996B386EA5B11A6BD72DDD24 /* PBXTargetDependency */,
+			);
+			name = KaloriasTests;
+			productName = KaloriasTests;
+			productReference = 60FAE056C4A9AD1F6CBF807F /* KaloriasTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		6178BB8630136C7300BA6198 /* Kalorias */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 6178BB9230136C7400BA6198 /* Build configuration list for PBXNativeTarget "Kalorias" */;
@@ -64,8 +204,6 @@
 				6178BB8930136C7300BA6198 /* Kalorias */,
 			);
 			name = Kalorias;
-			packageProductDependencies = (
-			);
 			productName = Kalorias;
 			productReference = 6178BB8730136C7300BA6198 /* Kalorias.app */;
 			productType = "com.apple.product-type.application";
@@ -100,6 +238,7 @@
 			projectRoot = "";
 			targets = (
 				6178BB8630136C7300BA6198 /* Kalorias */,
+				522949B1A88BB935AB14FF4D /* KaloriasTests */,
 			);
 		};
 /* End PBXProject section */
@@ -112,9 +251,43 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E9A1D544C6124CC6DABF7A2C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		0D3D86100A8C2746F59AA378 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A8C41FDC00DA567D180D1D9B /* RouterTests.swift in Sources */,
+				E9B96118AC7FD8F2ED369635 /* CameraPermissionStoreTests.swift in Sources */,
+				42D1721C0C46A0581FF44EA1 /* CaptureSessionStateTests.swift in Sources */,
+				FD4173B2D6CFC475AAC94935 /* CalorieAggregatorTests.swift in Sources */,
+				51707235A52AEE4473266048 /* CalorieAnalysisDecodingTests.swift in Sources */,
+				500E4D51488B83C3150CDE69 /* CalorieAnalysisStoreTests.swift in Sources */,
+				75FDB9EEAB4947568C53EBB0 /* CalorieAnalysisErrorMappingTests.swift in Sources */,
+				41DEB71D3CC969D6991FD2FC /* ImageStoreTests.swift in Sources */,
+				AF8CB68CB138F0D4ED4C24F0 /* MealHistoryRepositoryTests.swift in Sources */,
+				8BD8190439244D6C1D74BB4A /* MealTitleTests.swift in Sources */,
+				5C8789A05E6F93B239595FAD /* CameraZoomTests.swift in Sources */,
+				FDE910E0590F159EB58CEA84 /* SendFrameTests.swift in Sources */,
+				69EAFBC91453A8F35308C54F /* ImageCropperTests.swift in Sources */,
+				576673AE65FB49A9E671006E /* FoodRegionTests.swift in Sources */,
+				CF7E0DA6CC2EFD516D8B9553 /* WeekSummaryTests.swift in Sources */,
+				8B1AC5066C1AB57493CF187A /* PeriodChangeTests.swift in Sources */,
+				1CCC4AC8042DBC045B75052E /* DailyTallyTests.swift in Sources */,
+				0FE417819C9B5B65ED7DAD2D /* MealDateFormattingTests.swift in Sources */,
+				70E1626F6D870E6236172788 /* MealWeekGroupingTests.swift in Sources */,
+				67C23E58E79382650382C0A1 /* CalorieColorScaleTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		6178BB8330136C7300BA6198 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -123,6 +296,15 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		996B386EA5B11A6BD72DDD24 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = Kalorias;
+			target = 6178BB8630136C7300BA6198 /* Kalorias */;
+			targetProxy = C3EA4E594289C285871DB2F6 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		6178BB9030136C7400BA6198 /* Debug */ = {
@@ -248,14 +430,18 @@
 		};
 		6178BB9330136C7400BA6198 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A599FB91BE8AF0AFED08F160 /* Secrets.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = Icon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 85RGNG7LK2;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Config/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.food-and-drink";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Kalorias uses the camera to take a photo of your food and estimate its calories.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -269,25 +455,33 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.quispe.kalorias.Kalorias;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
 		6178BB9430136C7400BA6198 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A599FB91BE8AF0AFED08F160 /* Secrets.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = Icon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 85RGNG7LK2;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Config/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.food-and-drink";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Kalorias uses the camera to take a photo of your food and estimate its calories.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -301,12 +495,61 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.quispe.kalorias.Kalorias;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		95A365E11B30D6D873C6499E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 85RGNG7LK2;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				PRODUCT_BUNDLE_IDENTIFIER = com.quispe.kalorias.KaloriasTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Kalorias.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Kalorias";
+			};
+			name = Debug;
+		};
+		F1BAD566F0A66DCB8A72874B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 85RGNG7LK2;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				PRODUCT_BUNDLE_IDENTIFIER = com.quispe.kalorias.KaloriasTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Kalorias.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Kalorias";
+				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
 		};
@@ -327,6 +570,15 @@
 			buildConfigurations = (
 				6178BB9330136C7400BA6198 /* Debug */,
 				6178BB9430136C7400BA6198 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DD8E6D5E9A74F1CBD5919B84 /* Build configuration list for PBXNativeTarget "KaloriasTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F1BAD566F0A66DCB8A72874B /* Release */,
+				95A365E11B30D6D873C6499E /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
