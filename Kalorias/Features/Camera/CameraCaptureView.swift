@@ -225,7 +225,7 @@ struct CameraCaptureView: View {
                     .padding(.vertical, 14)
             }
             .buttonStyle(.glassProminent)
-            .tint(AppColor.brandPrimary)
+            .tint(AppColor.brandPrimaryFill)
             .accessibilityIdentifier("camera.sendButton")
         } else {
             Button {
@@ -310,7 +310,7 @@ struct CameraCaptureView: View {
                     .padding(.vertical, 12)
             }
             .buttonStyle(.glassProminent)
-            .tint(AppColor.brandPrimary)
+            .tint(AppColor.brandPrimaryFill)
             .accessibilityIdentifier("camera.cancelButton")
         }
         .padding(32)

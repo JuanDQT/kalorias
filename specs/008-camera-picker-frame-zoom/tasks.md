@@ -304,3 +304,132 @@ authoritative for this conversion, and that is what made the bug plausible enoug
 invariant designed to compensate for an untestable boundary is what turned a silently-offset crop into
 a loud, self-describing failure on the very first capture. Both halves of that design earned their
 keep — but the better outcome was not needing the boundary at all.
+
+---
+
+## Phase 7: Convergence
+
+**Source**: assessed against the Kalorias Constitution v3.0.0, which is textually synced to Template
+Constitution v2.0.0 — every SHARED section matches the template verbatim. What follows is the **code**
+that has not yet caught up with that text: the two items the template's own adoption status lists as
+outstanding for this project (`delete glassCard`; `palette fails 4.5:1`).
+
+Feature 008's own spec, plan and tasks are otherwise satisfied; its remaining unchecked tasks
+(T014, T025, T026, T036, T042, T043, T045) are the interactive device/VoiceOver checks already recorded
+in the Validation record and are **not** re-listed here.
+
+**Scope decision (maintainer, 2026-08-01)**: the type scale, spacing scale and motion/Reduce-Motion
+work that this assessment also surfaced is a project-wide refactor (53 font calls, 72 spacing literals,
+~10 view files) with no relationship to the camera. It was deliberately **moved out of 008** into its
+own feature rather than buried in a camera feature's task list — see "Deferred to feature 009" below.
+
+### Constitution violations (CRITICAL)
+
+- [X] T046 **CRITICAL** Delete `Kalorias/DesignSystem/GlassCard.swift` and every call site of `glassCard(...)`, per Constitution III (contradicts). The surface decision was made **per site** against the `apple-design` guidance on materials and depth, and all three land on an opaque `AppColor.surfaceElevated` fill:
+  - `Kalorias/Features/Progress/DailyCaloriesChart.swift:62` — a dense chart card on the app background. Nothing sits behind it worth revealing; translucency here is finish, not hierarchy.
+  - `Kalorias/Features/Progress/WeekSummaryCard.swift:37` — a grouped-content card of stacked numeric stats. Same reasoning.
+  - `Kalorias/Features/History/MealDetailsView.swift:138` — applied to **every food row inside a vertical list**, not to a panel over the meal photo (the photo is a separate 260pt header). Repeated translucent rows stacked on one another is the one case the skill rules out outright: *"A light translucent surface is never stacked on another — legibility collapses."* Opaque is not a compromise here, it is the correct answer.
+
+  Both the `GlassCard.swift` header comment and the comment at `MealDetailsView.swift:135-137` still quote the **superseded** v1.1.1 rule ("glass must go through one place"), which v3.0.0 inverted — delete those comments with the code; they are evidence the helper predates the current constitution, not a justification for keeping it
+
+- [X] T046a **CRITICAL** (paired with T046 — the cards are unreadable without it) Create `Kalorias/DesignSystem/CardSurface.swift`, a **single shared opaque** card surface, and route all three T046 call sites through it. Rationale for it being shared rather than inline: the constitution bans *"a helper whose whole job is to apply **glass** to a card or a button"* — an opaque surface is not that, and Principle III positively requires UI to be *"driven by shared design-system assets rather than ad hoc, per-screen values"*. **If translucency is ever wanted again, the rule is unchanged: call `.glassEffect(...)` at the site that needs it — never add it inside this helper.**
+
+  The separation problem this solves, measured: an opaque `surfaceElevated` on `surfacePrimary` is **1.065:1 in light** and **1.129:1 in dark**, and the app currently has **zero** `.shadow`/`.stroke`/`.border` anywhere — today the glass blur is the only thing making these read as cards. Tonal separation was modelled and **rejected**: darkening `surfacePrimary` to `#F1F3F0` buys only 1.12:1 of separation while dropping T047's worst text token to 4.30 — the two constraints pull against each other, so elevation must come from shadow, not tone (which is also what the skill says: *"Larger surfaces read as thicker … deeper shadow"*).
+
+  - **Light** carries the shadow. Today's 1.065:1 step is below even Apple's own `systemGroupedBackground` (≈1.10:1), so the shadow is doing real structural work, not decoration.
+  - **Dark leans on the existing tonal step, not the shadow.** A black shadow over `#0E120F` renders essentially nothing however high its opacity — there is no luminance difference to show. The 1.129:1 step between `surfaceElevated` and `surfacePrimary` is a conventional dark-mode card treatment and is what separates the card there. Keep the shadow minimal or absent in dark; do **not** compensate by cranking opacity.
+  - Put the shadow **on the background shape, not on the view**. `.shadow(...)` applied to the content shadows every glyph it contains and softens text edges:
+
+    ```swift
+    .background {
+        RoundedRectangle(cornerRadius: 18)
+            .fill(AppColor.surfaceElevated)
+            .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
+    }
+    ```
+  - Preserve the current geometry so this is a surface change and nothing else: `cornerRadius: 18` and the `padding: 16` the three sites already get from `glassCard`'s defaults (`MealDetailsView` passes `padding: 16` explicitly).
+  - Verify in **both** appearances that each of the three cards reads as a distinct surface (Principle VI — verified, not assumed). This is the check that decides whether the shadow values above are right; they are a starting point, not a result
+
+- [X] T047 **CRITICAL** Resolve `TODO(CONTRAST_AUDIT)` in the constitution's `PROJECT:palette` block, per Constitution III "contrast is measured, not eyeballed" (missing). **9 of 11 text-bearing tokens currently fail 4.5:1, all of them in light appearance only** — every dark variant already passes (6.10–12.67). Fix by **splitting text tokens from fill tokens**, the pattern the Template Constitution's own palette already uses (`stateCaution` for text and icons, `stateCautionFill` for fills only) and that this project's palette collapsed into one:
+  - Add `KaloriasTests/PaletteContrastTests.swift` **first**. It MUST **read the asset catalog**, not a hardcoded table — `UIColor(resource: .brandPrimary).resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))` and `.dark`, then compute the WCAG ratio from the resolved components. A test that asserts hardcoded hexes audits nothing: it restates itself and silently desynchronises from `Assets.xcassets` the first time someone edits a colorset. Coverage: 5 text tokens + `textPrimary` + `textSecondary`, each against `surfacePrimary` **and** `surfaceElevated`, in **both** appearances — 28 assertions, threshold ≥ 4.5:1.
+  - **Scope is text only** (maintainer decision): the constitution mandates 4.5:1 for "text and essential icons" and nothing more. The `-Fill` tokens and the three macros get **no** contrast assertion — they are always paired with a legible text label, which is the non-colour cue the palette block already requires. A WCAG 1.4.11 (3:1) rule for fills was modelled and deliberately **not** adopted: it would fail `warningFill` (2.62), `macroCarbs` (2.03) and `brandPrimaryFill` (2.70), and darkening `brandPrimaryFill` would shift the app's `AccentColor` and the camera button — a visual-identity change the constitution does not ask for.
+  - Introduce `brandPrimaryFill`, `successFill`, `cautionFill`, `warningFill`, `dangerFill` keeping **both** current hexes unchanged, and repoint every fill site at them: `CalorieColorStep+Color.swift`, `DailyCaloriesChart.swift:131`, and the **five `.tint(AppColor.brandPrimary)` sites** — all five sit on `.buttonStyle(.glassProminent)` (`BottomBar.swift:78`, `AnalysisResultView.swift:91` and `:192`, `CameraPermissionView.swift:42`, `CameraCaptureView.swift:228`), where the tint is the button's **fill** and the system picks a contrasting label. Those are fills, not text.
+  - Darken **only the light variant** of the five text tokens; their dark variants already pass with room (5.52–12.67) and MUST NOT change. Same hue and saturation, lightness reduced until the ratio clears — computed against the binding surface `surfacePrimary` `#F7F8F6`, targeting **≈4.6 for headroom** rather than the bare 4.5 so a future surface tweak or rounding does not make the suite brittle:
+
+    | Token (text) | Light today | Ratio | Light new | vs `#F7F8F6` | vs `#FFFFFF` |
+    |---|---|---|---|---|---|
+    | `brandPrimary` | `#2FB457` | 2.53 ❌ | `#22813F` | 4.61 ✅ | 4.91 |
+    | `success` | `#2EA84C` | 2.89 ❌ | `#23813B` | 4.61 ✅ | 4.91 |
+    | `caution` | `#B8860B` | 3.05 ❌ | `#916A09` | 4.62 ✅ | 4.92 |
+    | `warning` | `#E8890C` | 2.46 ❌ | `#A36108` | 4.62 ✅ | 4.92 |
+    | `danger` | `#D93A3A` | 4.27 ❌ | `#D62D2D` | 4.61 ✅ | 4.92 |
+
+    The test asserts ≥ 4.5 and remains the authority; these values simply do not live on the line.
+  - **`macroProtein`, `macroCarbs`, `macroFat` are not changed.** Rendered only as 7pt `Circle().fill(...)` dots already paired with a `textSecondary` label (`MealRowView.swift:119-127`). Document them in the table as fill-only.
+  - Sites that keep a **text** token: `MealRowView.swift:57` (`calorieColor` colours the calorie figure — the comment at lines 52-54 argues the colour is "a supplementary cue and never the sole carrier of meaning", which is true but does not apply: the rule is about the legibility of the glyph, not about whether colour carries meaning), `AnalysisResultView.swift:180` (a 44pt SF Symbol — an essential icon), and the five `brandPrimary` `foregroundStyle` sites (`BottomBar.swift:62`, `AnalysisResultView.swift:69`, `ProgressTabView.swift:77`, `CameraPermissionView.swift:26`, `HistoryView.swift:140`).
+  - **Delete the `.foregroundStyle(.white)` override at `BottomBar.swift:74`.** It is the only raw colour literal outside the camera — and the plan's Complexity Tracking justification covers *camera chrome*, not the tab bar. It forces white onto a `brandPrimary`-tinted `.glassProminent` button (2.70:1 nominal), overriding the contrasting label colour the style would otherwise pick. Removing it is what Principle III asks for: accessibility behaviour for translucency "is the system's job, not the app's".
+  - Delete `brandSecondary` from `Kalorias/DesignSystem/AppColor.swift:26` and its `BrandSecondary.colorset`: **zero uses anywhere in the app** — dead code under Principle I.
+  - Update the constitution's token table **and** the asset catalog in the same change (Design System governance), then remove the `TODO(CONTRAST_AUDIT)` marker
+
+### Validation (run last — T046/T046a/T047 change what you would be validating)
+
+**Sequencing (maintainer decision)**: do **not** start the outstanding manual validation until T046,
+T046a and T047 are applied and the suite is green. Those three change card surfaces and five token
+hexes app-wide, and V1/V2/V3 each contain light/dark legibility checks while V5 is entirely
+appearance, language and VoiceOver — validating first would mean walking every screen twice.
+
+- [ ] T048 Run **one** consolidated manual pass covering the seven still-open validation tasks from Phases 3–6 — **T014** (V1, simulator), **T025** and **T026** (V2, physical device, incl. the crop check), **T036** (V3, physical device), **T042** (V4 failure paths), **T043** (V5 accessibility/appearance/language) and **T045** (the quickstart Definition of Done) — plus these convergence-specific checks, in the same walkthrough:
+  - each of the three former-`glassCard` surfaces (`DailyCaloriesChart`, `WeekSummaryCard`, and the `MealDetailsView` food rows) reads as a **distinct card** in **both** appearances — this is what decides whether T046a's shadow values are right;
+  - the five recoloured text tokens look correct in real context, not just in a test: `MealRowView.swift:57` (calorie figure), `AnalysisResultView.swift:180` (44pt symbol), `BottomBar.swift:62` (selected tab), `ProgressTabView.swift:77`, `HistoryView.swift:140`;
+  - the camera button label in `BottomBar` is still legible after the `.foregroundStyle(.white)` override is removed and the system picks the label colour.
+
+  Mark the seven original tasks in place as they pass; this task is the vehicle, not a replacement for them
+
+**Known conflict, recorded not silenced**: T041 is marked `[X]` asserting "no new colour token was added
+and the constitution's token table is untouched", and the quickstart's Definition of Done repeats it.
+**T047 deliberately reverses both** — it adds five `-Fill` tokens, deletes `brandSecondary`, and edits the
+constitution's table. T041 was accurate for 008's own scope and for plan.md's Constitution Check row;
+the convergence supersedes it. Neither T041 nor the quickstart is rewritten here — they are the record
+of what was true when they ran.
+
+### Deferred to feature 009 (design-system scales)
+
+Not tasks here — recorded so the deferral is tracked rather than lost (Principle I: "If work is
+deferred, it is tracked as a task, not a comment"). These become 009's task list:
+
+- **Type scale** — named roles defining size, weight and letter-spacing together, each on a Dynamic
+  Type style. Does not exist; **53** raw `.font(.…)` calls across 9 view files, in **23 distinct
+  styles**, stand in for it. There are also **7 forbidden fixed point sizes**, and they are two
+  different problems: `AnalysisResultView.swift:68` (56pt) and `MealDetailsView.swift:33` (48pt) are
+  `design: .rounded` display numerals — text, and exactly the "display/total" role the constitution
+  names; the other five are **SF Symbols** (`BottomBar.swift:57` and `:73`,
+  `AnalysisResultView.swift:179`, `CameraPermissionView.swift:25`, `CameraCaptureView.swift:294`) that
+  do not scale with Dynamic Type (Principle VI). **Decision**: two ramps — `AppTypography` for the text
+  roles, and a separate small icon ramp for symbols, each rung anchored to a text style rather than a
+  number, so the `.system(size:)` audit can reach zero.
+- **Spacing scale** — "one ramp that all padding, insets, and gaps come from". Does not exist; **72**
+  numeric spacing literals in the view layer across **16 distinct values**. **Decision**: a 4pt grid
+  with a fine tier for typographic gaps — `0 2 4 6 8 12 16 24 32 40` — which covers 57 of the 72 uses
+  as-is and moves only 12 (`3`→4 ×4, `5`→4 ×2, `10` ×2, `14` ×4), leaving the tight gaps (`spacing: 3`
+  between figure and unit, the seven `spacing: 6`) intact. Rungs are named **semantically**
+  (`.hairline .tight .snug .compact .base .comfy .section .screen .hero`), not numerically, so the
+  scale can be retuned without touching a single call site — which is the point of having a ramp.
+- **Motion vocabulary + Reduce Motion** — routed through one shared helper, not checked per view. The
+  app has **no** `accessibilityReduceMotion` handling anywhere. Note the app currently contains exactly
+  **one** animation (below), so this is groundwork for motion that does not exist yet rather than a
+  cleanup of motion that does. **Decision**: build the **minimum with a real call site** — a
+  `crossFade` token plus the Reduce Motion consultation in one place — and let the vocabulary grow when
+  actual motion arrives. A full house vocabulary (critically-damped `standard`, gesture-thrown
+  `thrown`) was considered and rejected for now: both rungs would ship with zero call sites, which
+  Principle I treats as dead code.
+- **`CameraCaptureView.swift:175`** — `.animation(.easeInOut(duration: 0.15), value: store.isZoomed)`
+  is 008's own new code. It violates **one** rule, not three: *"Views MUST NOT construct
+  `.spring(...)`/`.easeInOut(...)` inline"* — the curve and duration belong in the motion vocabulary.
+  It does **not** need a spring and does **not** need a Reduce Motion path, because the animated
+  property is `.opacity` alone (a cross-fade of the zoom indicator; nothing moves): the skill asks for
+  springs on *"anything a user can touch"*, and this is a passive readout, while *"a short cross-fade"*
+  is precisely what the skill prescribes **as** the Reduce Motion form. **008 therefore ships with one
+  known, tracked, low-severity deviation** — an inline literal that should be a token — closed by 009.
+
+**Checkpoint**: the two ratified-but-unmet MUST clauses are closed; the design-system scales are
+tracked as their own feature

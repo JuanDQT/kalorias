@@ -39,7 +39,7 @@ struct CameraPermissionView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.glassProminent)
-                .tint(AppColor.brandPrimary)
+                .tint(AppColor.brandPrimaryFill)
                 .controlSize(.large)
                 .accessibilityIdentifier("permission.continueButton")
             }

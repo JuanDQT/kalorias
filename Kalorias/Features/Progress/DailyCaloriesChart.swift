@@ -59,7 +59,10 @@ struct DailyCaloriesChart: View {
             chart
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard()
+        // Opaque: a dense chart card sitting directly on the app background.
+        // Nothing behind it is worth revealing, so translucency here would be
+        // finish rather than hierarchy (apple-design, materials and depth).
+        .cardSurface()
         // The marks are hidden from assistive tech and replaced by one element
         // that reads every day INCLUDING the unlogged ones — a per-mark approach
         // cannot announce a day that has no mark (FR-028).
@@ -128,12 +131,12 @@ struct DailyCaloriesChart: View {
     /// in this window. With no bounds there is nothing to plot, so the fallback is
     /// never reached in practice.
     private func color(for tally: DailyTally) -> Color {
-        guard let bounds else { return AppColor.success }
+        guard let bounds else { return AppColor.successFill }
         return CalorieColorScale.step(
             for: tally.totalCalories,
             lowest: bounds.lowest,
             highest: bounds.highest
-        ).color
+        ).fillColor
     }
 
     /// "Mon: 1,200 kcal, Tue: no data, …" — every day is represented, so an

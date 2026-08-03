@@ -62,6 +62,39 @@ system's responsibility. Apple's materials and glass already honour those
 settings; the project helper re-implemented that and could only drift from it.
 
 Follow-up TODOs: see the TODO(...) markers inside the PROJECT blocks below.
+
+AMENDMENT 3.1.0 (2026-08-01) — TODO(CONTRAST_AUDIT) resolved
+------------------------------------------------------------
+Bump rationale: MINOR — materially expanded guidance inside a PROJECT block
+(the palette). No SHARED section changed, so no template change and no
+propagation to other projects is implied.
+
+What changed and why: the measured audit the 3.0.0 amendment deferred was
+carried out. 9 of the 11 text-bearing tokens failed the 4.5:1 rule Principle III
+requires, all of them in LIGHT appearance only — every dark variant already
+passed with room (6.10-12.67). The cause was structural rather than a handful of
+bad hexes: the palette used ONE token for both text and fills, and a hue vivid
+enough to be a chart bar is not legible as text on `surfacePrimary`.
+
+The fix follows the Template Constitution's own palette, which already
+distinguishes `stateCaution` (text and icons) from `stateCautionFill` (fills
+only) — a split this project had collapsed. Five `-Fill` tokens now carry the
+original vivid hexes unchanged; the five text tokens keep their dark variants
+untouched and darken only their light variant, to ~4.6:1 rather than the bare
+minimum so the values do not sit on the threshold.
+
+`brandSecondary` was removed: it had zero uses anywhere in the app (Principle I,
+no dead code).
+
+Verification is by measurement, not by this table: `PaletteContrastTests`
+resolves each token from the asset catalog through `UIColor(resource:)` for an
+explicit trait collection and computes the WCAG ratio. A test asserting
+hardcoded hexes would audit nothing and would drift from the catalog silently.
+
+Also recorded here: the two surface tokens are only 1.065:1 apart in light,
+so card elevation cannot come from tone. Darkening `surfacePrimary` was modelled
+and rejected because it pushes the text tokens back below the threshold; the
+separation lives in `CardSurface.swift` instead.
 -->
 
 # Kalorias Constitution
@@ -356,30 +389,62 @@ Tokens live as color sets in `Kalorias/Assets.xcassets/Palette/` (each with a
 light and dark variant) and are exposed in
 `Kalorias/DesignSystem/AppColor.swift` as `AppColor.<token>`.
 
+The palette separates **text tokens** from **fill tokens**. A hue vivid enough
+to work as a chart bar or a button fill is generally not legible as text on
+`surfacePrimary`, so the two are not the same value. A `-Fill` token MUST NEVER
+be placed behind a glyph; a text token MAY be used as a fill, but there is
+rarely a reason to.
+
+**Text and essential icons** — every one of these is verified ≥ 4.5:1 against
+both surfaces in both appearances by `KaloriasTests/PaletteContrastTests`,
+which resolves them from the asset catalog rather than from a copy of this
+table:
+
 | Token             | Role                                   | Light     | Dark      |
 | ----------------- | -------------------------------------- | --------- | --------- |
-| `brandPrimary`    | Primary brand; matches AccentColor     | `#2FB457` | `#3DDC6E` |
-| `brandSecondary`  | Energy accent / calls to action        | `#FF8A0A` | `#FFB340` |
-| `macroProtein`    | Protein macro accent                   | `#E8384F` | `#FF6B7F` |
-| `macroCarbs`      | Carbohydrate macro accent              | `#F5A623` | `#FFC24D` |
-| `macroFat`        | Fat macro accent                       | `#5A6CEA` | `#8A97FF` |
-| `success`         | On-track / within goal                 | `#2EA84C` | `#4CD469` |
-| `caution`         | Mild caution (yellow step)             | `#B8860B` | `#F2D24B` |
-| `warning`         | Approaching a limit                    | `#E8890C` | `#FFB84D` |
-| `danger`          | Over budget / destructive              | `#D93A3A` | `#FF5C5C` |
-| `surfacePrimary`  | App background                         | `#F7F8F6` | `#0E120F` |
-| `surfaceElevated` | Cards / grouped content                | `#FFFFFF` | `#1A1F1B` |
+| `brandPrimary`    | Primary brand text / selected tab      | `#22813F` | `#3DDC6E` |
+| `success`         | On-track / within goal                 | `#23813B` | `#4CD469` |
+| `caution`         | Mild caution (yellow step)             | `#916A09` | `#F2D24B` |
+| `warning`         | Approaching a limit                    | `#A36108` | `#FFB84D` |
+| `danger`          | Over budget / destructive              | `#D62D2D` | `#FF5C5C` |
 | `textPrimary`     | Primary text                           | `#10140F` | `#F2F5F0` |
 | `textSecondary`   | Secondary / supporting text            | `#6B6F6A` | `#A2A8A0` |
 
+**Fills only** — chart marks, badges, macro dots, and `.tint` on a prominent
+button (where the tint is the button's fill and the system derives a
+contrasting label). Carry no contrast assertion, because each is always paired
+with a legible text label:
+
+| Token              | Role                                  | Light     | Dark      |
+| ------------------ | ------------------------------------- | --------- | --------- |
+| `brandPrimaryFill` | Brand fill; matches AccentColor       | `#2FB457` | `#3DDC6E` |
+| `successFill`      | On-track fill                         | `#2EA84C` | `#4CD469` |
+| `cautionFill`      | Mild-caution fill                     | `#B8860B` | `#F2D24B` |
+| `warningFill`      | Approaching-a-limit fill              | `#E8890C` | `#FFB84D` |
+| `dangerFill`       | Over-budget fill                      | `#D93A3A` | `#FF5C5C` |
+| `macroProtein`     | Protein macro accent                  | `#E8384F` | `#FF6B7F` |
+| `macroCarbs`       | Carbohydrate macro accent             | `#F5A623` | `#FFC24D` |
+| `macroFat`         | Fat macro accent                      | `#5A6CEA` | `#8A97FF` |
+
+**Surfaces**:
+
+| Token             | Role                                   | Light     | Dark      |
+| ----------------- | -------------------------------------- | --------- | --------- |
+| `surfacePrimary`  | App background                         | `#F7F8F6` | `#0E120F` |
+| `surfaceElevated` | Cards / grouped content                | `#FFFFFF` | `#1A1F1B` |
+
 `macroProtein`/`macroCarbs`/`macroFat` are the app's central visual signal and
 MUST be paired with a non-color cue (label or value) wherever a macro
-breakdown is shown, so the signal survives color-blindness.
+breakdown is shown, so the signal survives color-blindness. That pairing is
+also why they carry no contrast assertion — they are dots beside a legible
+label, never the carrier of the information themselves.
 
-TODO(CONTRAST_AUDIT): several tokens above were chosen before the measured
-4.5:1 rule in Principle III existed and have not been verified against both
-surfaces in both appearances. They MUST be audited, and adjusted where they
-fail, in the first feature that touches them.
+The two surfaces above are only 1.065:1 apart in light and 1.129:1 in dark, so
+**tone alone does not separate a card from the background**. Card elevation
+comes from the shadow in `Kalorias/DesignSystem/CardSurface.swift`, not from
+the palette. Darkening `surfacePrimary` to buy separation was measured and
+rejected: it gains almost nothing while pushing the text tokens above back
+below 4.5:1.
 <!-- /PROJECT:palette -->
 
 Changing a token's hex or adding a token is a design-system change and MUST
@@ -508,5 +573,5 @@ All plans and PRs MUST verify compliance with this constitution; any
 deviation MUST be justified in the plan's Complexity Tracking section rather
 than silently introduced.
 
-**Version**: 3.0.0 | **Ratified**: 2026-07-24 | **Last Amended**: 2026-07-27
-**Template**: TemplateConstitution v1.0.0
+**Version**: 3.1.0 | **Ratified**: 2026-07-24 | **Last Amended**: 2026-08-01
+**Template**: TemplateConstitution v2.0.0

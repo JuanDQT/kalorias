@@ -34,7 +34,10 @@ struct WeekSummaryCard: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard()
+        // Opaque: grouped content — stacked numeric stats on the app
+        // background. Same reasoning as the chart card; there is no depth for
+        // translucency to convey here.
+        .cardSurface()
         .accessibilityIdentifier("progress.week.card")
     }
 

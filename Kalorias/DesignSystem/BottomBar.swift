@@ -69,13 +69,17 @@ struct BottomBar: View {
 
     private var cameraButton: some View {
         Button(action: onCamera) {
+            // No explicit foreground color: `.glassProminent` derives a label
+            // color that contrasts with its own tint. Forcing `.white` here
+            // overrode that with a raw literal measuring 2.70:1 against the
+            // brand fill. Principle III is explicit that accessibility
+            // behaviour for translucency "is the system's job, not the app's".
             Image(systemName: "camera.fill")
                 .font(.system(size: 26, weight: .bold))
-                .foregroundStyle(.white)
                 .frame(width: 64, height: 64)
         }
         .buttonStyle(.glassProminent)
-        .tint(AppColor.brandPrimary)
+        .tint(AppColor.brandPrimaryFill)
         .clipShape(.circle)
         .accessibilityIdentifier("bottomBar.cameraButton")
         .accessibilityLabel(Text("camera.capture"))

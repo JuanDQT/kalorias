@@ -14,6 +14,7 @@
 		500E4D51488B83C3150CDE69 /* CalorieAnalysisStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 631331136C5161E3B5B78445 /* CalorieAnalysisStoreTests.swift */; };
 		51707235A52AEE4473266048 /* CalorieAnalysisDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CA284B0462AABD85A34870A /* CalorieAnalysisDecodingTests.swift */; };
 		576673AE65FB49A9E671006E /* FoodRegionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C080355026E1858059D3A5B /* FoodRegionTests.swift */; };
+		5C8789A05E6F93B239595FAD /* CameraZoomTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAB8BC97C52F4B76D35CD447 /* CameraZoomTests.swift */; };
 		67C23E58E79382650382C0A1 /* CalorieColorScaleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB072700AC595051D26D73C /* CalorieColorScaleTests.swift */; };
 		69EAFBC91453A8F35308C54F /* ImageCropperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64C31AE1A8EFA1645FF0A0E2 /* ImageCropperTests.swift */; };
 		70E1626F6D870E6236172788 /* MealWeekGroupingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26BF7B3E48E053698D54F1BE /* MealWeekGroupingTests.swift */; };
@@ -23,11 +24,11 @@
 		A8C41FDC00DA567D180D1D9B /* RouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B40AAA04B70322986D17B070 /* RouterTests.swift */; };
 		AF8CB68CB138F0D4ED4C24F0 /* MealHistoryRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52EEC44D4F3C1854B5C5ADBA /* MealHistoryRepositoryTests.swift */; };
 		CF7E0DA6CC2EFD516D8B9553 /* WeekSummaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BD6DEA9F3B5745B2E5DA70D /* WeekSummaryTests.swift */; };
-		5C8789A05E6F93B239595FAD /* CameraZoomTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAB8BC97C52F4B76D35CD447 /* CameraZoomTests.swift */; };
 		D75053ED3A198FDEBF3DDC6E /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3BA056E9027A8BEFE4710E0B /* Foundation.framework */; };
 		E9B96118AC7FD8F2ED369635 /* CameraPermissionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5C5EB66EB71AF4B2D4A0A99 /* CameraPermissionStoreTests.swift */; };
 		FD4173B2D6CFC475AAC94935 /* CalorieAggregatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 403982DD4E90D12608102ED0 /* CalorieAggregatorTests.swift */; };
 		FDE910E0590F159EB58CEA84 /* SendFrameTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34FC144A87B4C88E852B4E12 /* SendFrameTests.swift */; };
+		ABCDEF0123456789ABCD0001 /* PaletteContrastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCDEF0123456789ABCD0002 /* PaletteContrastTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -47,6 +48,7 @@
 		2BD6DEA9F3B5745B2E5DA70D /* WeekSummaryTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WeekSummaryTests.swift; sourceTree = "<group>"; };
 		3043D3DA4E0E31AFE339A78A /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		34FC144A87B4C88E852B4E12 /* SendFrameTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SendFrameTests.swift; sourceTree = "<group>"; };
+		ABCDEF0123456789ABCD0002 /* PaletteContrastTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PaletteContrastTests.swift; sourceTree = "<group>"; };
 		3BA056E9027A8BEFE4710E0B /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		403982DD4E90D12608102ED0 /* CalorieAggregatorTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalorieAggregatorTests.swift; sourceTree = "<group>"; };
 		4C080355026E1858059D3A5B /* FoodRegionTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FoodRegionTests.swift; sourceTree = "<group>"; };
@@ -62,9 +64,9 @@
 		B10F03FCA615C002B53960F4 /* MealDateFormattingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MealDateFormattingTests.swift; sourceTree = "<group>"; };
 		B40AAA04B70322986D17B070 /* RouterTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RouterTests.swift; sourceTree = "<group>"; };
 		C9E081CDEBB98D9B25DB6C05 /* PeriodChangeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PeriodChangeTests.swift; sourceTree = "<group>"; };
+		CAB8BC97C52F4B76D35CD447 /* CameraZoomTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CameraZoomTests.swift; sourceTree = "<group>"; };
 		D4BD00063BB8FC158F019A8F /* CaptureSessionStateTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CaptureSessionStateTests.swift; sourceTree = "<group>"; };
 		E5C5EB66EB71AF4B2D4A0A99 /* CameraPermissionStoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CameraPermissionStoreTests.swift; sourceTree = "<group>"; };
-		CAB8BC97C52F4B76D35CD447 /* CameraZoomTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CameraZoomTests.swift; sourceTree = "<group>"; };
 		E9696D3461DEC74C21A1A2B1 /* MealTitleTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MealTitleTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -110,6 +112,7 @@
 				E9696D3461DEC74C21A1A2B1 /* MealTitleTests.swift */,
 				CAB8BC97C52F4B76D35CD447 /* CameraZoomTests.swift */,
 				34FC144A87B4C88E852B4E12 /* SendFrameTests.swift */,
+				ABCDEF0123456789ABCD0002 /* PaletteContrastTests.swift */,
 				64C31AE1A8EFA1645FF0A0E2 /* ImageCropperTests.swift */,
 				4C080355026E1858059D3A5B /* FoodRegionTests.swift */,
 				2BD6DEA9F3B5745B2E5DA70D /* WeekSummaryTests.swift */,
@@ -277,6 +280,7 @@
 				8BD8190439244D6C1D74BB4A /* MealTitleTests.swift in Sources */,
 				5C8789A05E6F93B239595FAD /* CameraZoomTests.swift in Sources */,
 				FDE910E0590F159EB58CEA84 /* SendFrameTests.swift in Sources */,
+				ABCDEF0123456789ABCD0001 /* PaletteContrastTests.swift in Sources */,
 				69EAFBC91453A8F35308C54F /* ImageCropperTests.swift in Sources */,
 				576673AE65FB49A9E671006E /* FoodRegionTests.swift in Sources */,
 				CF7E0DA6CC2EFD516D8B9553 /* WeekSummaryTests.swift in Sources */,

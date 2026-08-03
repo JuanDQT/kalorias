@@ -73,16 +73,14 @@ struct MealRowView: View {
         }
     }
 
-    /// Maps the calorie scale step to a palette token (constitution Principle
-    /// III — every color comes from `AppColor`, never a literal). Green is this
-    /// week's lightest meal, red its heaviest.
+    /// The calorie figure is text, so this takes the contrast-checked **text**
+    /// variant of the scale. The mapping itself lives in
+    /// `CalorieColorStep+Color.swift`, which the file's own doc comment calls
+    /// "the one canonical place the four-step scale becomes color" — this used
+    /// to restate that switch locally, which is exactly the second
+    /// implementation Principle I rules out.
     private var calorieColor: Color {
-        switch display.colorStep {
-        case .low: AppColor.success
-        case .moderate: AppColor.caution
-        case .high: AppColor.warning
-        case .veryHigh: AppColor.danger
-        }
+        display.colorStep.textColor
     }
 
     @ViewBuilder

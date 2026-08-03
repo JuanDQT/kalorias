@@ -31,7 +31,7 @@ struct MealDetailsView: View {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text("\(entry.totalCalories)")
                             .font(.system(size: 48, weight: .bold, design: .rounded))
-                            .foregroundStyle(colorStep.color)
+                            .foregroundStyle(colorStep.textColor)
                         Text("history.kcalUnit")
                             .font(.title3.weight(.semibold))
                             .foregroundStyle(AppColor.textSecondary)
@@ -132,10 +132,12 @@ struct MealDetailsView: View {
                         }
                     }
                 }
-                // The shared Liquid Glass helper rather than an ad-hoc
-                // `.glassEffect(...)` — Principle III requires glass to go through
-                // one place. `padding: 16` reproduces the previous inset exactly.
-                .glassCard(padding: 16)
+                // Opaque, and here the guidance is emphatic rather than
+                // merely permissive: this surface repeats for EVERY food row
+                // in a vertical list, and "a light translucent surface is
+                // never stacked on another — legibility collapses". The meal
+                // photo is a separate header above, not behind these rows.
+                .cardSurface(padding: 16)
             }
         }
         .accessibilityIdentifier("mealDetails.foodList")

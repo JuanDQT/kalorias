@@ -88,7 +88,7 @@ struct AnalysisResultView: View {
                 Text("analysis.done").frame(maxWidth: .infinity)
             }
             .buttonStyle(.glassProminent)
-            .tint(AppColor.brandPrimary)
+            .tint(AppColor.brandPrimaryFill)
             .controlSize(.large)
             .padding(24)
             .accessibilityIdentifier("analysis.doneButton")
@@ -189,7 +189,7 @@ struct AnalysisResultView: View {
                     Text(primaryTitle).frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.glassProminent)
-                .tint(AppColor.brandPrimary)
+                .tint(AppColor.brandPrimaryFill)
                 .accessibilityIdentifier(primaryIdentifier)
 
                 Button(role: .cancel, action: cancel) {
