@@ -157,9 +157,9 @@ the one call site that knows.
 
 ---
 
-## 5. `AppConfiguration` — new, replaces `AppSecrets`
+## 5. `BackendEnvironment` — new, replaces `AppSecrets`
 
-`Kalorias/Support/AppConfiguration.swift`. `AppSecrets.swift` is deleted.
+`Kalorias/Support/BackendEnvironment.swift`. `AppSecrets.swift` is deleted.
 
 | Member | Rule |
 |---|---|

@@ -3,8 +3,9 @@
 //  Kalorias
 //
 //  Domain models for a photo calorie analysis. Pure, nonisolated, Sendable
-//  value types — decoupled from the Gemini wire format (see GeminiCalorieService)
-//  and usable/testable from any context.
+//  value types — decoupled from the wire format (see AnalyzeMealResponse) and
+//  usable/testable from any context. That decoupling is why moving the analysis
+//  to the Kalorias backend left every type in this file untouched.
 //
 
 import Foundation
@@ -58,8 +59,13 @@ nonisolated struct FoodItem: Equatable, Sendable, Identifiable {
 /// A successful, food-bearing analysis.
 nonisolated struct CalorieAnalysis: Equatable, Sendable {
     let items: [FoodItem]
-    /// Derived total = Σ items.calories (see CalorieAggregator); never taken
-    /// from the wire payload.
+    /// The total the server reported, taken as received and never recomputed
+    /// (see `CalorieAggregator.make(from:reportedTotal:)`).
+    ///
+    /// It is NOT derived from `items`, and the two can legitimately disagree —
+    /// the server owns the arithmetic, and substituting the app's own would put
+    /// a number on screen that contradicts the list beneath it. A mismatch is
+    /// logged in DEBUG and shown anyway (FR-012).
     let totalCalories: Int
 }
 
@@ -67,4 +73,23 @@ nonisolated struct CalorieAnalysis: Equatable, Sendable {
 nonisolated enum AnalysisOutcome: Equatable, Sendable {
     case success(CalorieAnalysis)
     case noFood
+}
+
+extension AnalysisOutcome {
+    /// A one-word label for the log. Names the shape of the answer only —
+    /// never a food name, which FR-026 keeps out of the log entirely.
+    var logDescription: String {
+        switch self {
+        case .success: "success"
+        case .noFood: "noFood"
+        }
+    }
+
+    /// How many foods came back. A count, not the contents.
+    var foodCount: Int {
+        switch self {
+        case .success(let analysis): analysis.items.count
+        case .noFood: 0
+        }
+    }
 }

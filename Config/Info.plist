@@ -20,14 +20,17 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>GeminiAPIKey</key>
-	<string>$(GEMINI_API_KEY)</string>
-	<key>GeminiModel</key>
-	<string>$(GEMINI_MODEL)</string>
+	<key>KaloriasAPIBaseURL</key>
+	<string>$(KALORIAS_API_BASE_URL)</string>
 	<key>LSApplicationCategoryType</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Kalorias uses the camera to take a photo of your food and estimate its calories.</string>
 	<key>UIApplicationSceneManifest</key>

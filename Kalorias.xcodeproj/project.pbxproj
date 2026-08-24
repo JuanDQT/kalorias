@@ -12,7 +12,6 @@
 		41DEB71D3CC969D6991FD2FC /* ImageStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE3C30E58FB131396AB1D84 /* ImageStoreTests.swift */; };
 		42D1721C0C46A0581FF44EA1 /* CaptureSessionStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4BD00063BB8FC158F019A8F /* CaptureSessionStateTests.swift */; };
 		500E4D51488B83C3150CDE69 /* CalorieAnalysisStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 631331136C5161E3B5B78445 /* CalorieAnalysisStoreTests.swift */; };
-		51707235A52AEE4473266048 /* CalorieAnalysisDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CA284B0462AABD85A34870A /* CalorieAnalysisDecodingTests.swift */; };
 		576673AE65FB49A9E671006E /* FoodRegionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C080355026E1858059D3A5B /* FoodRegionTests.swift */; };
 		5C8789A05E6F93B239595FAD /* CameraZoomTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAB8BC97C52F4B76D35CD447 /* CameraZoomTests.swift */; };
 		67C23E58E79382650382C0A1 /* CalorieColorScaleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB072700AC595051D26D73C /* CalorieColorScaleTests.swift */; };
@@ -29,6 +28,13 @@
 		FD4173B2D6CFC475AAC94935 /* CalorieAggregatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 403982DD4E90D12608102ED0 /* CalorieAggregatorTests.swift */; };
 		FDE910E0590F159EB58CEA84 /* SendFrameTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34FC144A87B4C88E852B4E12 /* SendFrameTests.swift */; };
 		ABCDEF0123456789ABCD0001 /* PaletteContrastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCDEF0123456789ABCD0002 /* PaletteContrastTests.swift */; };
+		FE89BB5F57B47245A686C6A8 /* BackendEnvironmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83FD50E901995ABC08902B67 /* BackendEnvironmentTests.swift */; };
+		AFD565CF058B96641D981283 /* MultipartFormDataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7E731CABF62832858FE5D4B /* MultipartFormDataTests.swift */; };
+		7A529131E14FF96A9E825A5A /* AnalyzeMealResponseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 772B22BA65BD44EA5979237B /* AnalyzeMealResponseTests.swift */; };
+		9C4A8563AD271259B8AC77C0 /* RemoteCalorieServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CDBEBA4A0A623D4BD618C6 /* RemoteCalorieServiceTests.swift */; };
+		D70495C6EC9F3A16BF423771 /* RetryCooldownTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A1EE17F30B0D890888F9AB /* RetryCooldownTests.swift */; };
+		789955CB8BAAA5AE21E97DAE /* AnalysisPhotoEncoderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CA6674150C6953ED10E5BF6 /* AnalysisPhotoEncoderTests.swift */; };
+		722A0C6F90A6AF21B5AFEF8E /* BackendEnvironmentAuditTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6759D0A6CD495752F42503A /* BackendEnvironmentAuditTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -42,7 +48,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		0CA284B0462AABD85A34870A /* CalorieAnalysisDecodingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalorieAnalysisDecodingTests.swift; sourceTree = "<group>"; };
 		20DA6774F7280DF338939A77 /* CalorieAnalysisErrorMappingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalorieAnalysisErrorMappingTests.swift; sourceTree = "<group>"; };
 		26BF7B3E48E053698D54F1BE /* MealWeekGroupingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MealWeekGroupingTests.swift; sourceTree = "<group>"; };
 		2BD6DEA9F3B5745B2E5DA70D /* WeekSummaryTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WeekSummaryTests.swift; sourceTree = "<group>"; };
@@ -68,6 +73,13 @@
 		D4BD00063BB8FC158F019A8F /* CaptureSessionStateTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CaptureSessionStateTests.swift; sourceTree = "<group>"; };
 		E5C5EB66EB71AF4B2D4A0A99 /* CameraPermissionStoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CameraPermissionStoreTests.swift; sourceTree = "<group>"; };
 		E9696D3461DEC74C21A1A2B1 /* MealTitleTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MealTitleTests.swift; sourceTree = "<group>"; };
+		83FD50E901995ABC08902B67 /* BackendEnvironmentTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BackendEnvironmentTests.swift; sourceTree = "<group>"; };
+		C7E731CABF62832858FE5D4B /* MultipartFormDataTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MultipartFormDataTests.swift; sourceTree = "<group>"; };
+		772B22BA65BD44EA5979237B /* AnalyzeMealResponseTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnalyzeMealResponseTests.swift; sourceTree = "<group>"; };
+		70CDBEBA4A0A623D4BD618C6 /* RemoteCalorieServiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RemoteCalorieServiceTests.swift; sourceTree = "<group>"; };
+		42A1EE17F30B0D890888F9AB /* RetryCooldownTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RetryCooldownTests.swift; sourceTree = "<group>"; };
+		3CA6674150C6953ED10E5BF6 /* AnalysisPhotoEncoderTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnalysisPhotoEncoderTests.swift; sourceTree = "<group>"; };
+		D6759D0A6CD495752F42503A /* BackendEnvironmentAuditTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BackendEnvironmentAuditTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -104,7 +116,6 @@
 				E5C5EB66EB71AF4B2D4A0A99 /* CameraPermissionStoreTests.swift */,
 				D4BD00063BB8FC158F019A8F /* CaptureSessionStateTests.swift */,
 				403982DD4E90D12608102ED0 /* CalorieAggregatorTests.swift */,
-				0CA284B0462AABD85A34870A /* CalorieAnalysisDecodingTests.swift */,
 				631331136C5161E3B5B78445 /* CalorieAnalysisStoreTests.swift */,
 				20DA6774F7280DF338939A77 /* CalorieAnalysisErrorMappingTests.swift */,
 				4EE3C30E58FB131396AB1D84 /* ImageStoreTests.swift */,
@@ -121,6 +132,13 @@
 				B10F03FCA615C002B53960F4 /* MealDateFormattingTests.swift */,
 				26BF7B3E48E053698D54F1BE /* MealWeekGroupingTests.swift */,
 				4CB072700AC595051D26D73C /* CalorieColorScaleTests.swift */,
+				83FD50E901995ABC08902B67 /* BackendEnvironmentTests.swift */,
+				C7E731CABF62832858FE5D4B /* MultipartFormDataTests.swift */,
+				772B22BA65BD44EA5979237B /* AnalyzeMealResponseTests.swift */,
+				70CDBEBA4A0A623D4BD618C6 /* RemoteCalorieServiceTests.swift */,
+				42A1EE17F30B0D890888F9AB /* RetryCooldownTests.swift */,
+				3CA6674150C6953ED10E5BF6 /* AnalysisPhotoEncoderTests.swift */,
+				D6759D0A6CD495752F42503A /* BackendEnvironmentAuditTests.swift */,
 			);
 			path = KaloriasTests;
 			sourceTree = SOURCE_ROOT;
@@ -269,10 +287,16 @@
 			buildActionMask = 2147483647;
 			files = (
 				A8C41FDC00DA567D180D1D9B /* RouterTests.swift in Sources */,
+				722A0C6F90A6AF21B5AFEF8E /* BackendEnvironmentAuditTests.swift in Sources */,
+				789955CB8BAAA5AE21E97DAE /* AnalysisPhotoEncoderTests.swift in Sources */,
+				D70495C6EC9F3A16BF423771 /* RetryCooldownTests.swift in Sources */,
+				9C4A8563AD271259B8AC77C0 /* RemoteCalorieServiceTests.swift in Sources */,
+				7A529131E14FF96A9E825A5A /* AnalyzeMealResponseTests.swift in Sources */,
+				AFD565CF058B96641D981283 /* MultipartFormDataTests.swift in Sources */,
+				FE89BB5F57B47245A686C6A8 /* BackendEnvironmentTests.swift in Sources */,
 				E9B96118AC7FD8F2ED369635 /* CameraPermissionStoreTests.swift in Sources */,
 				42D1721C0C46A0581FF44EA1 /* CaptureSessionStateTests.swift in Sources */,
 				FD4173B2D6CFC475AAC94935 /* CalorieAggregatorTests.swift in Sources */,
-				51707235A52AEE4473266048 /* CalorieAnalysisDecodingTests.swift in Sources */,
 				500E4D51488B83C3150CDE69 /* CalorieAnalysisStoreTests.swift in Sources */,
 				75FDB9EEAB4947568C53EBB0 /* CalorieAnalysisErrorMappingTests.swift in Sources */,
 				41DEB71D3CC969D6991FD2FC /* ImageStoreTests.swift in Sources */,

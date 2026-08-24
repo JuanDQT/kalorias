@@ -81,6 +81,7 @@ nonisolated final class MealHistoryRepositoryTests: XCTestCase {
 
         let stored = repo.entries().first?.foods.first
         XCTAssertEqual(stored?.region, region)
+        _ = container
     }
 
     /// A meal must save completely even when the analysis reported no boxes —

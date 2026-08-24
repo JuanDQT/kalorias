@@ -143,7 +143,7 @@ Kalorias/
 │   ├── CalorieAnalysis.swift             # MOD — doc only: total is reported, not derived
 │   └── FoodRegion.swift                  # MOD — delete init(geminiTop:…)
 ├── Support/
-│   ├── AppConfiguration.swift            # NEW — replaces AppSecrets
+│   ├── BackendEnvironment.swift            # NEW — replaces AppSecrets
 │   ├── AppSecrets.swift                  # DELETED
 │   └── AnalysisLog.swift                 # NEW — os.Logger, category "analysis"
 └── Features/Camera/
@@ -160,7 +160,8 @@ KaloriasTests/
 ├── RemoteCalorieServiceTests.swift       # NEW — URLProtocol stub, status mapping
 ├── RetryCooldownTests.swift              # NEW
 ├── AnalysisPhotoEncoderTests.swift       # NEW
-├── AppConfigurationTests.swift           # NEW — the xcconfig `//` guard
+├── BackendEnvironmentTests.swift           # NEW — the xcconfig `//` guard
+├── BackendEnvironmentAuditTests.swift      # NEW — zero base-URL literals outside the environment
 ├── CalorieAnalysisDecodingTests.swift    # DELETED (superseded)
 ├── FoodRegionTests.swift                 # MOD — drop the 6 gemini cases
 ├── CalorieAggregatorTests.swift          # MOD — reported total

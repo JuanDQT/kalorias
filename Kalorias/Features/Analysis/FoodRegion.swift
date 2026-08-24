@@ -10,10 +10,17 @@
 //  analyzed. A pixel region would mis-crop by the downscale ratio — silently, and
 //  differently for every photo. Unit coordinates survive any rescaling.
 //
-//  Invalid regions cannot exist: both initializers are failable and are the only
-//  way to make one, so anything that holds a `FoodRegion` holds a croppable one
+//  Invalid regions cannot exist: the initializer is failable and is the only way
+//  to make one, so anything that holds a `FoodRegion` holds a croppable one
 //  (FR-015). No UIKit/CoreGraphics import, so the geometry rules — the part most
 //  likely to be wrong — are unit-testable without an image.
+//
+//  THE 0-1000 CONVERSION IS GONE (feature 009). The Kalorias backend sends
+//  proportions in `0...1` from the top-left already, which is exactly what this
+//  type stores, so the scaling and the y-first axis order are the server's
+//  problem now. The old initializer was deleted rather than kept "just in case":
+//  left in place it was dead code that still compiled, and its tests would have
+//  kept passing while covering a path no request can reach.
 //
 
 import Foundation
@@ -51,22 +58,4 @@ nonisolated struct FoodRegion: Codable, Hashable, Sendable {
         self.height = clampedHeight
     }
 
-    /// A bounding box as the analysis reports it: integer edges on a 0–1000
-    /// normalized scale, `ymin`/`ymax` from the **top** and `xmin`/`xmax` from the
-    /// **left**.
-    ///
-    /// The parameter labels spell the axes out on purpose. The model's native
-    /// array form is `[ymin, xmin, ymax, xmax]` — **y first** — which is the
-    /// opposite of the `(x, y, …)` order most code assumes, and swapping the pair
-    /// yields a perfectly valid-looking crop of the wrong part of the photo with
-    /// no error raised anywhere.
-    init?(geminiTop ymin: Int, left xmin: Int, bottom ymax: Int, right xmax: Int) {
-        let scale = 1000.0
-        self.init(
-            clampingX: Double(xmin) / scale,
-            y: Double(ymin) / scale,
-            width: Double(xmax - xmin) / scale,
-            height: Double(ymax - ymin) / scale
-        )
-    }
 }

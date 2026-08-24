@@ -68,17 +68,29 @@ struct CameraCaptureView: View {
         }
     }
 
-    /// Send the captured photo for calorie analysis (feature 002).
+    /// Send the captured photo for calorie analysis (feature 002 → 009).
+    ///
+    /// The photo is PREPARED HERE, not inside the service: `CalorieAnalyzing`
+    /// keeps its `analyze(imageData:)` shape, the service stays free of UIKit,
+    /// and a retry re-sends bytes that are already encoded instead of redoing
+    /// the work every attempt.
     private func startAnalysis(_ image: UIImage) {
         store.stop()
-        guard let data = image.jpegData(compressionQuality: 0.8) else {
-            dismiss()
+
+        guard let data = AnalysisPhotoEncoder.encode(image) else {
+            // A photo that will not fit under the size cap even at the lowest
+            // quality. This used to dismiss the camera outright, which loses the
+            // user's photo with no explanation; they get the same message and
+            // the same way out — Retake — as if the server had refused it
+            // (FR-023).
+            analysisStore = CalorieAnalysisStore(rejectedPhoto: image)
             return
         }
+
         analysisStore = CalorieAnalysisStore(
             imageData: data,
             image: image,
-            analyzer: GeminiCalorieService(),
+            analyzer: RemoteCalorieService(),
             recorder: history
         )
     }
@@ -172,7 +184,11 @@ struct CameraCaptureView: View {
             .padding(.vertical, 6)
             .glassEffect(.regular, in: .capsule)
             .opacity(store.isZoomed ? 1 : 0)
-            .animation(.easeInOut(duration: 0.15), value: store.isZoomed)
+            // Routed through the vocabulary (T058). This was the app's one
+            // inline animation constructor, which Principle III forbids in the
+            // view layer; `subtle` is the right named value for an indicator
+            // fading in and out in place.
+            .animation(AppMotion.subtle, value: store.isZoomed)
             .accessibilityElement()
             .accessibilityLabel(Text("camera.zoom.label"))
             .accessibilityValue(Text(verbatim: formattedZoom))

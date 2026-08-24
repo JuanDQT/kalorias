@@ -107,4 +107,45 @@ nonisolated enum ImageCropper {
         }
     }
 
+    /// Scale an image down so its longest side is at most `maxPixels` **pixels**,
+    /// rendered at scale 1 so the result's points and pixels are the same thing.
+    ///
+    /// WHY THIS EXISTS ALONGSIDE `downsized`. That one caps *points* and renders
+    /// at the screen's scale, which is right for something the app will display:
+    /// on a 3x device a 1024-point result carries 3072 pixels of detail. For
+    /// anything that leaves the device it is exactly wrong — the upload is
+    /// measured in pixels and bytes, so a "1024" photo travels as 3072 px and
+    /// nine times the data. `AnalysisPhotoEncoder` needs the pixel meaning, and
+    /// putting it here rather than in the encoder keeps the orientation
+    /// handling in the one place that gets it right (see the file comment).
+    ///
+    /// Scales DOWN only: an image already within the limit keeps its pixel
+    /// dimensions, so nothing is upscaled into blur.
+    static func downsizedToPixels(_ image: UIImage, maxPixels: CGFloat) -> UIImage {
+        let pixelSize = CGSize(
+            width: image.size.width * image.scale,
+            height: image.size.height * image.scale
+        )
+        let longest = max(pixelSize.width, pixelSize.height)
+        guard longest > 0, maxPixels > 0 else { return image }
+
+        let ratio = min(1, maxPixels / longest)
+        let outputSize = CGSize(
+            width: (pixelSize.width * ratio).rounded(),
+            height: (pixelSize.height * ratio).rounded()
+        )
+        guard outputSize.width >= 1, outputSize.height >= 1 else { return image }
+
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        format.opaque = true
+        let renderer = UIGraphicsImageRenderer(size: outputSize, format: format)
+
+        // `draw(in:)` honours `imageOrientation`, so a photo carrying rotation
+        // metadata is baked upright here rather than shipped sideways.
+        return renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: outputSize))
+        }
+    }
+
 }

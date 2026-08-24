@@ -11,7 +11,7 @@ taken, and what was rejected. Ordered by how expensive the decision is to revers
 
 **Decision**: two values in `Config/Secrets.xcconfig` (already the base configuration for both
 Debug and Release — `project.pbxproj:437,477`), selected by `$(CONFIGURATION)`, surfaced through
-`Info.plist` as `KaloriasAPIBaseURL`, read by `AppConfiguration`.
+`Info.plist` as `KaloriasAPIBaseURL`, read by `BackendEnvironment`.
 
 ```
 SLASH = /
@@ -30,7 +30,7 @@ comment, *including inside a value*. Written literally, `KALORIAS_API_BASE_URL =
 silently becomes `https:` — a URL that parses fine and resolves to nothing, producing a generic
 service error on every analysis with no clue as to why. The `$(SLASH)` indirection is the standard
 workaround. A test asserting the built URL is well-formed catches a regression here (see
-data-model.md, `AppConfiguration`).
+data-model.md, `BackendEnvironment`).
 
 **Alternatives rejected**:
 

@@ -7,6 +7,10 @@
 //  failure never shows a calorie number (FR-011). `onFinish` returns to the
 //  main screen; `onRetake` returns to the live camera (FR-012/FR-015).
 //
+//  ONLY THE FAILURE BRANCH KNOWS about the move to the Kalorias backend — the
+//  analyzing, result and no-food states are untouched, because on the happy path
+//  this feature is meant to be invisible.
+//
 
 import SwiftUI
 
@@ -19,17 +23,26 @@ struct AnalysisResultView: View {
         ZStack {
             AppColor.surfacePrimary.ignoresSafeArea()
 
-            switch store.state {
-            case .analyzing:
-                analyzing
-            case .result(let analysis):
-                result(analysis)
-            case .noFood:
-                noFood
-            case .failed(let error):
-                failed(error)
+            // The state machine used to SNAP: analyzing → result / noFood /
+            // failed replaced the whole screen with no continuity, so the user
+            // had to re-read it to work out what had changed. Principle III
+            // defaults motion on for exactly this, and the animation comes from
+            // the vocabulary rather than from a literal here (T055/T056).
+            Group {
+                switch store.state {
+                case .analyzing:
+                    analyzing
+                case .result(let analysis):
+                    result(analysis)
+                case .noFood:
+                    noFood
+                case .failed(let error):
+                    failed(error)
+                }
             }
+            .transition(AppMotion.standardTransition)
         }
+        .animation(AppMotion.standard, value: store.state)
         .accessibilityIdentifier("analysis.screen")
         .onAppear { store.start() }
     }
@@ -146,7 +159,7 @@ struct AnalysisResultView: View {
             systemImage: "questionmark.circle",
             messageKey: "analysis.noFood",
             messageIdentifier: "analysis.noFoodMessage",
-            primaryTitle: "analysis.retake",
+            primaryLabel: Text("analysis.retake"),
             primaryIdentifier: "analysis.retakeButton",
             primaryAction: onRetake
         )
@@ -154,14 +167,74 @@ struct AnalysisResultView: View {
 
     // MARK: Failure
 
+    /// Every failure is actionable — the action is just not the same one.
+    ///
+    /// A REJECTED PHOTO OFFERS RETAKE, NOT RETRY (rule U2 / FR-019): re-sending
+    /// the same bytes cannot succeed, so a Retry button there is a dead end
+    /// dressed as a way out. It reuses `analysis.retakeButton`, so the
+    /// identifier keeps naming what the control *does*.
+    ///
+    /// A RATE LIMIT OFFERS RETRY, DISABLED, COUNTING DOWN (rule U3 / FR-020),
+    /// and re-enables in place at zero with no navigation. The store refuses the
+    /// retry independently of this `disabled` (rule U4), so the two cannot drift
+    /// apart.
+    ///
+    /// No failure shows a calorie number, a request id, an HTTP status, a
+    /// provider name, or the server's own message text (rules U1, U6).
+    @ViewBuilder
     private func failed(_ error: AnalysisError) -> some View {
-        messageState(
-            systemImage: "exclamationmark.triangle",
-            messageKey: LocalizedStringKey(error.messageKey),
-            messageIdentifier: "analysis.errorMessage",
-            primaryTitle: "analysis.retry",
-            primaryIdentifier: "analysis.retryButton",
-            primaryAction: { store.retry() }
+        switch error {
+        case .photoRejected:
+            messageState(
+                systemImage: "exclamationmark.triangle",
+                messageKey: LocalizedStringKey(error.messageKey),
+                messageIdentifier: "analysis.errorMessage",
+                primaryLabel: Text("analysis.retake"),
+                primaryIdentifier: "analysis.retakeButton",
+                primaryAction: onRetake
+            )
+
+        case .rateLimited:
+            messageState(
+                systemImage: "exclamationmark.triangle",
+                messageKey: LocalizedStringKey(error.messageKey),
+                messageIdentifier: "analysis.errorMessage",
+                primaryLabel: retryLabel,
+                primaryIdentifier: "analysis.retryButton",
+                primaryDisabled: !store.canRetry,
+                primaryAction: { store.retry() }
+            )
+            // The countdown ticks once a second and the control re-enables at
+            // zero: both are observable state changes Principle III defaults on.
+            // `subtle` because a 1 Hz counter animated any harder reads as the
+            // screen being busy — and because no animation may delay the user's
+            // retry, which is why this is 0.20 s and not the house 0.30 s
+            // ("fluid is not busy").
+            .animation(AppMotion.subtle, value: store.secondsUntilRetry)
+            .animation(AppMotion.subtle, value: store.canRetry)
+
+        case .noConnection, .timeout, .serviceError, .invalidResponse:
+            messageState(
+                systemImage: "exclamationmark.triangle",
+                messageKey: LocalizedStringKey(error.messageKey),
+                messageIdentifier: "analysis.errorMessage",
+                primaryLabel: Text("analysis.retry"),
+                primaryIdentifier: "analysis.retryButton",
+                primaryAction: { store.retry() }
+            )
+        }
+    }
+
+    /// "Retry in 12 s" while cooling, plain "Retry" once it expires.
+    ///
+    /// Built with `String(format:)` over the localized pattern rather than by
+    /// interpolating inside `Text(...)`: interpolation would derive the key
+    /// `"analysis.retryIn %lld"`, which is not the key in the catalog, and the
+    /// button would silently render that raw string instead.
+    private var retryLabel: Text {
+        guard store.secondsUntilRetry > 0 else { return Text("analysis.retry") }
+        return Text(
+            verbatim: String(format: String(localized: "analysis.retryIn"), store.secondsUntilRetry)
         )
     }
 
@@ -169,8 +242,9 @@ struct AnalysisResultView: View {
         systemImage: String,
         messageKey: LocalizedStringKey,
         messageIdentifier: String,
-        primaryTitle: LocalizedStringKey,
+        primaryLabel: Text,
         primaryIdentifier: String,
+        primaryDisabled: Bool = false,
         primaryAction: @escaping () -> Void
     ) -> some View {
         VStack(spacing: 20) {
@@ -184,12 +258,20 @@ struct AnalysisResultView: View {
                 .foregroundStyle(AppColor.textPrimary)
                 .accessibilityIdentifier(messageIdentifier)
 
-            VStack(spacing: 12) {
+            // The failure branch's own layout comes from the spacing ramp
+            // (T059). `md` and `xl` are exactly the 12 and 24 that were here, so
+            // nothing moves — what changes is that the numbers now have one
+            // home. The rest of this file's literals belong to the features that
+            // own those branches.
+            VStack(spacing: AppSpacing.md) {
                 Button(action: primaryAction) {
-                    Text(primaryTitle).frame(maxWidth: .infinity)
+                    primaryLabel
+                        .supportingTextRole()
+                        .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.glassProminent)
                 .tint(AppColor.brandPrimaryFill)
+                .disabled(primaryDisabled)
                 .accessibilityIdentifier(primaryIdentifier)
 
                 Button(role: .cancel, action: cancel) {
@@ -199,7 +281,7 @@ struct AnalysisResultView: View {
                 .accessibilityIdentifier("analysis.cancelButton")
             }
             .controlSize(.large)
-            .padding(.horizontal, 24)
+            .padding(.horizontal, AppSpacing.xl)
         }
         .padding(32)
     }

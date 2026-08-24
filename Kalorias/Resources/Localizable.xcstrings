@@ -91,6 +91,40 @@
         }
       }
     },
+    "analysis.error.photoRejected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That photo can’t be analyzed. Try a different one."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esa foto no se puede analizar. Prueba con otra."
+          }
+        }
+      }
+    },
+    "analysis.error.rateLimited": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too many analyses for now."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demasiados análisis por ahora."
+          }
+        }
+      }
+    },
     "analysis.error.service": {
       "extractionState": "stale",
       "localizations": {
@@ -233,6 +267,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reintentar"
+          }
+        }
+      }
+    },
+    "analysis.retryIn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retry in %lld s"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reintentar en %lld s"
           }
         }
       }

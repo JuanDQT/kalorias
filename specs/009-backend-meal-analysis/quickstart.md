@@ -35,7 +35,7 @@ KALORIAS_API_BASE_URL = $(KALORIAS_API_BASE_URL_$(CONFIGURATION))
 
 > **`$(SLASH)` is not decoration.** In an xcconfig file `//` starts a comment *inside a value*, so
 > a literal `https://www.quispe.com` becomes `https:` — a URL that parses and resolves to nothing,
-> producing a generic service error with no clue why. `AppConfigurationTests` exists to catch
+> producing a generic service error with no clue why. `BackendEnvironmentTests` exists to catch
 > exactly this.
 
 Mirror the same three lines (with placeholder hosts) into the tracked
@@ -128,7 +128,8 @@ layer really was decoupled.
 | `RemoteCalorieServiceTests` | 200/422/413/429/503/500/418 → outcome; missing base URL ⇒ `.serviceError`; no `Authorization` header sent; request id captured; session config asserts `timeoutIntervalForRequest == 35`, `timeoutIntervalForResource == 60`, `urlCache == nil` | A10, E1–E4, C1, FR-004/005/006 |
 | `RetryCooldownTests` | `Retry-After` seconds; HTTP-date; absent; garbage; negative; 99999 clamped; `secondsRemaining` rounds up, floors at 0 | A11, R1–R6 |
 | `AnalysisPhotoEncoderTests` | longest side ≤ 1024; no upscaling; output is JPEG; result under the cap; PNG/HEIC source converts | P1–P6 |
-| `AppConfigurationTests` | configured value is an absolute URL with scheme **and host** (the `//` guard); blank ⇒ `nil` | C3 |
+| `BackendEnvironmentTests` | configured value is an absolute URL with scheme **and host** (the `//` guard); blank ⇒ `nil` | C3 |
+| `BackendEnvironmentAuditTests` | zero base-URL literals anywhere in the app target outside `BackendEnvironment.swift`, plus a guard that the walk found the sources at all | constitution, Backend Environments |
 | `CalorieAnalysisStoreTests` *(mod)* | `.rateLimited` starts a cooldown; `retry()` is a no-op while cooling; zero re-enables; `cancel()` cancels both; `.photoRejected` never retries | S1–S6 |
 
 **No test may sleep, hit the network, or read the wall clock.** Time is injected; the network is a
