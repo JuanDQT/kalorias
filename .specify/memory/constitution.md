@@ -1,6 +1,37 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 3.4.0 → 3.4.1
+Bump rationale: PATCH — resincronizado a Template Constitution v3.0.2, que
+corrige la clausula Backend Environments en dos puntos sin cambiar lo que exige:
+su ALCANCE (gobierna los backends a los que la app llama, no todo string de URL
+que guarde; los enlaces legales — politica de privacidad, EULA — son identicos
+en debug y produccion y quedan fuera) y su MECANISMO (la propiedad exigida es un
+unico punto de decision del que una build de release no pueda salir apuntando a
+un backend que no sea produccion; `#if DEBUG`/`#else` y resolver la direccion
+desde un ajuste de compilacion valen igual). Paleta sin cambios, sin
+re-ratificar.
+
+Version change: 3.3.0 → 3.4.0
+Bump rationale: MINOR — sincronizado a Template Constitution v3.0.1, saltando
+desde v2.2.0. Lo que entra:
+  - v2.3.0, presentacion de bottom sheets. **No abre trabajo de codigo aqui: el
+    proyecto no presenta ni una sola sheet.**
+  - v2.4.0, Backend Environments: toda URL de red sale de un unico
+    `BackendEnvironment`, con produccion en el `#else`.
+  - v2.4.1/v3.0.1, clausula "Project extensions" de Governance (incluida
+    "Numbering") y disparador de ratificacion de paleta acotado.
+El Principio VII (Monetization & In-App Purchase) de v2.4.0 NUNCA llego a este
+proyecto: fue retractado en el template en v3.0.0 antes de propagarse.
+Paleta: la identidad verde de salud se arrastra sin cambios y NO se re-ratifica,
+por la misma razon; pasa 4.5:1 y esta cubierta por PaletteContrastTests.
+Deuda de codigo que ESTE sync abre:
+  - `Kalorias/Features/Analysis/GeminiCalorieService.swift:68` incrusta la URL
+    base de Gemini. Debe pasar a `BackendEnvironment`.
+Deuda anterior que sigue abierta (v2.1.0/v2.2.0): sin vocabulario de
+movimiento, cero cambios de estado animados y un `.easeInOut` en linea en
+CameraCaptureView.
+
 Version change: 1.1.1 → 2.0.0
 Bump rationale: MAJOR — synced to Template Constitution v1.0.0
 (`~/Projects/TemplateConstitution.md`), which redefines two existing
@@ -95,6 +126,117 @@ Also recorded here: the two surface tokens are only 1.065:1 apart in light,
 so card elevation cannot come from tone. Darkening `surfacePrimary` was modelled
 and rejected because it pushes the text tokens back below the threshold; the
 separation lives in `CardSurface.swift` instead.
+
+AMENDMENT 3.2.0 (2026-08-03) — synced to Template Constitution v2.1.0
+--------------------------------------------------------------------
+Bump rationale: MINOR — new and materially expanded guidance in SHARED
+sections. Nothing that complied under 3.1.0 becomes a violation: Stores, the
+"no ViewModel" rule, and the ban on inline `.spring(...)`/`.easeInOut(...)`
+were all already mandatory here.
+
+SHARED sections changed (all propagated verbatim from the template):
+  1. Principle III gains three motion rules: **motion is the default** — every
+     observable state change is animated rather than snapping; **animation comes
+     from the vocabulary, never from a literal**; and **fluid is not busy** —
+     idle loops, decorative flourishes, and time-filling staggered entrances are
+     forbidden, and no animation may delay the user's next action. Its rationale
+     gains the paragraph explaining why motion is defaulted *on* while glass is
+     defaulted *off*.
+  2. Principle V is restated as **MVS (Model–View–Store)**. The Store is now
+     named as a layer of the pattern rather than an addition to MV, and each
+     layer's responsibilities are spelled out, including that a type backing
+     exactly one view is "a ViewModel wearing a Store's name".
+  3. Design System — the **Motion** entry now specifies the vocabulary's shape:
+     named values from a single type (e.g. `AppMotion`) covering at minimum a
+     *standard*, a *gestural*, and a *subtle* animation, each paired with the
+     transition it travels with, with the Reduce Motion substitution applied
+     inside the vocabulary once. The grep audit adds "zero inline animation
+     constructors in the view layer".
+  4. Design System — **the palette is ratified with the maintainer, never
+     invented**, at project adoption and at every sync, via the Clarification
+     Gate format (three complete proposals, one marked Recommended).
+  5. Development Workflow gains the **Clarification Gate (NON-NEGOTIABLE)**:
+     every `/speckit-specify` and `/speckit-plan` run ends by putting every open
+     question to the maintainer as a batch of three-option questions with a
+     marked recommendation, answered and written back in the same run; a run
+     that surfaces nothing open must say so out loud.
+  6. The PR checklist adds the inline-animation audit and the requirement that
+     every new or changed observable state transition is animated from the
+     vocabulary and checked once with Reduce Motion on.
+
+No PROJECT block changed. The palette was re-ratified with the maintainer at
+this sync (see "Design System & Color Tokens"); it was kept unchanged, having
+passed the 4.5:1 audit in 3.1.0.
+
+Prior TODO closed: `glassCard`/`glassActionButton` and all call sites are gone;
+`CardSurface.swift` carries the opaque replacement.
+
+Follow-up TODOs (code, not constitution):
+- TODO(MOTION_VOCABULARY): the app has no motion vocabulary type. Principle III
+  now requires one; create `Kalorias/DesignSystem/AppMotion.swift` with the
+  standard/gestural/subtle animations and their paired transitions, with the
+  Reduce Motion substitution applied inside it.
+- TODO(MOTION_ADOPTION): the app currently animates no state change and holds
+  one inline constructor at
+  `Kalorias/Features/Camera/CameraCaptureView.swift:175`
+  (`.easeInOut(duration: 0.15)`). Route it through the vocabulary and animate
+  the observable state changes Principle III now defaults on.
+
+Templates reviewed at this sync:
+- ✅ .specify/templates/plan-template.md — generic Constitution Check gate.
+- ✅ .specify/templates/spec-template.md — no principle-specific references.
+- ✅ .specify/templates/tasks-template.md — generic; still correctly excludes
+  UI-test tasks from implement-phase plans.
+
+AMENDMENT 3.3.0 (2026-08-04) — synced to Template Constitution v2.2.0
+--------------------------------------------------------------------
+Bump rationale: MINOR — new guidance added to a SHARED section. Nothing that
+complied under 3.2.0 becomes a violation; the clause tells an implementation run
+what to do when a required piece of the design system is missing, it does not
+change what the design system must contain.
+
+SHARED section changed (propagated verbatim from the template — exactly one,
+and the rest of the SHARED body was verified byte-identical to the template
+before and after):
+  1. Design System & Color Tokens gains **"The design system is a prerequisite,
+     not a deliverable of its own."** Where the type scale, the spacing scale,
+     or the motion vocabulary does not yet exist, building it belongs to the
+     first feature that needs it and MUST happen in the same implementation run
+     — not deferred, not filed as a follow-up, and never worked around with a
+     literal or an unanimated state change. Judgement the new piece needs (the
+     house spring's feel, the ramp's steps) goes through the Clarification Gate.
+
+Why it matters here specifically: v2.1.0 required all motion to come from a
+vocabulary but never said who creates that vocabulary or when. Kalorias has
+none, so every implement run since has had no legal move — animate and violate
+"no literals", or skip the animation and violate "motion is the default". This
+clause resolves that: build the vocabulary, in that run.
+
+No PROJECT block changed. The palette was NOT re-ratified at this sync: the
+template records that the v2.2.0 clause affects no palette and that propagating
+it does not require re-ratification, so the green health identity ratified at
+the 3.2.0 sync carries over unchanged and still passes 4.5:1 under
+`PaletteContrastTests`.
+
+Status of the 3.2.0 follow-ups, re-stated under the new clause (verified in the
+code at this sync — both are still open, and both are now prerequisite work
+rather than deferrable TODOs):
+- MOTION_VOCABULARY: `Kalorias/DesignSystem/` holds AppColor, BottomBar,
+  CalorieColorStep+Color, CardSurface, ReverseMask — there is no `AppMotion`,
+  and no type or spacing scale either. The next feature that animates anything
+  MUST create `AppMotion.swift` (standard/gestural/subtle, each with its paired
+  transition, Reduce Motion applied inside it) in the same run.
+- MOTION_ADOPTION: the app still animates zero state changes and still holds
+  the one inline constructor at
+  `Kalorias/Features/Camera/CameraCaptureView.swift:175`
+  (`.easeInOut(duration: 0.15)`). It is routed through the vocabulary by the
+  first run that touches that screen.
+
+Templates reviewed at this sync:
+- ✅ .specify/templates/plan-template.md — generic Constitution Check gate.
+- ✅ .specify/templates/spec-template.md — no principle-specific references.
+- ✅ .specify/templates/tasks-template.md — generic; still correctly excludes
+  UI-test tasks from implement-phase plans.
 -->
 
 # Kalorias Constitution
@@ -228,6 +370,46 @@ deliberate, opt-in gate.
   fallbacks. Every surface, translucent or not, MUST remain legible in both
   light and dark appearances (Principle VI), and that legibility is verified,
   not assumed.
+- **A bottom sheet's content IS the sheet, not a card floating inside it.**
+  A view presented as a bottom sheet MUST NOT apply a translucent surface
+  (`.glassEffect(...)`, a system material, or any other fill) to its own root,
+  and MUST NOT wrap that root in outer insets that hold the card away from the
+  sheet's edges. The presentation already draws a surface; a second one inside
+  it is decoration stacked on decoration, and the inset that separates them is
+  wasted height on the screen size that has least of it. Interior padding
+  *within* the content is normal and expected — what is forbidden is a second
+  surface and the outer inset around it.
+- **A sheet's root fills the presented height.** It MUST carry
+  `.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)` so the
+  content grows from the top edge of the detent rather than centring itself in
+  it. Without this a short sheet floats its content mid-height and a bottom-
+  pinned action lands wherever the content happens to end.
+- **A half-height sheet is fixed, not expandable.** A sheet presented at half
+  height MUST declare exactly one detent and MUST NOT be draggable to a larger
+  one, unless a feature spec states otherwise **and says why** — content that
+  demonstrably cannot fit at half height on some supported device is the kind of
+  reason that qualifies; "the user might want more room" is not. Downward
+  swipe-to-dismiss is unaffected by this rule. A sheet whose whole purpose is
+  long-form reading is presented at large from the start rather than made
+  resizable.
+- **Motion is the default, not an extra.** Every observable state change MUST
+  be animated rather than snapping into place, so the app reads as continuous:
+  a value updating, a row inserted, removed, or reordered, a sheet or detail
+  appearing and dismissing, a tab or filter switching, content arriving after
+  a load, an error or empty state appearing, a control changing its pressed or
+  selected appearance. Where a screen changes state instantly today, adding
+  the animation is part of the work, not a follow-up pass.
+- **Animation comes from the vocabulary, never from a literal.** All motion
+  MUST use the named animations and paired transitions defined in the Motion
+  entry of "Design System & Color Tokens" below. Views MUST NOT construct
+  `.spring(...)` or `.easeInOut(...)` inline and MUST NOT invent per-screen
+  durations; a new kind of motion is added to the vocabulary first, then used.
+- **Fluid is not busy.** Motion earns its place by showing where something
+  came from and where it went. Idle loops, decorative flourishes, and staggered
+  entrances that merely fill time are forbidden, and no animation may delay the
+  user's next action: every animated flow stays interruptible, stays inside the
+  frame budget of Principle IV, and remains fully completable under Reduce
+  Motion (see the apple-design section).
 
 <!-- PROJECT:vocabulary -->
 - The app's domain terminology (e.g. "calorías", "macros", "proteínas",
@@ -261,6 +443,26 @@ to, and every new screen inherits glass by default. Banning the wrapper is not
 a style preference: it forces the decision to be made, and made visibly, at the
 one place that has the context to make it.
 
+Motion is treated the opposite way, and for the same reason. A UI that snaps
+between states makes the user re-read the screen after every tap to work out
+what changed; animating the change carries that information for them, which is
+why the default here is *animate*, not *consider animating*. That default is
+safe only because the motion comes from one shared vocabulary: a per-screen
+`.easeInOut(duration: 0.3)` is how an app ends up with fifteen slightly
+different senses of "fast", and how ornament creeps in behind the word
+"fluid".
+
+The bottom-sheet rules are the same argument applied to a surface rather than
+to a colour or a curve. A sheet is *already* a floating, layered surface — the
+system drew it, at the right elevation, honouring the accessibility settings.
+Putting a glass card inside it does not add hierarchy, because there is no
+second level of hierarchy to express; it adds a border, an inset, and a
+translucency stacked over translucency that reads as haze on the one screen
+size with no height to spare. And a half sheet that can be dragged taller
+offers a gesture with two meanings — resize or dismiss — at the exact moment
+the reader is deciding whether they are done. Fixing the height removes the
+ambiguity rather than documenting it.
+
 ### IV. Performance Requirements
 
 - Cold app launch to first interactive frame MUST stay under 2 seconds on the
@@ -292,13 +494,25 @@ assuming is what makes the budget real.
   Sendable`, `nonisolated(unsafe)`, or `@preconcurrency` escapes unless the
   safety invariant is documented in an adjacent comment and justified in the
   PR.
-- The app MUST follow the MV (Model–View) pattern with observable State:
-  views are thin and derive their content from state, and there is no separate
-  per-view ViewModel/Controller layer (no MVVM). Views observe state directly.
-- Mutable application and feature state MUST live in **Stores** — observable,
-  `@MainActor`-isolated reference types (e.g. `@Observable` classes) that own a
-  slice of state and expose the intents that mutate it. Business logic and
-  mutations MUST NOT live in view bodies; views call Store intents.
+- The app MUST follow the **MVS (Model–View–Store)** pattern. Its three layers,
+  and nothing between them:
+  - **Model** — the domain types and the pure logic over them (Principle I):
+    value types where possible, no knowledge of the UI, unit-testable on their
+    own.
+  - **View** — thin SwiftUI views that render the state they observe and send
+    intents. A view holds no business logic and owns no state beyond what is
+    purely local to its own presentation (e.g. a text field's in-progress
+    text, an animation flag).
+  - **Store** — the observable, `@MainActor`-isolated reference types (e.g.
+    `@Observable` classes) that own a slice of application or feature state and
+    expose the intents that mutate it. Every mutation the user can cause goes
+    through a Store intent.
+- There is **no per-view ViewModel or Controller layer** — MVVM is explicitly
+  not the pattern here. A type that exists to back exactly one view, mirroring
+  its properties, is a ViewModel wearing a Store's name; Stores are owned by a
+  feature and are shared by the views of that feature.
+- Business logic and mutations MUST NOT live in view bodies. A view body
+  computes layout from state and calls intents — nothing else.
 - Navigation MUST be driven by a dedicated **Router** that owns navigation
   state (paths, presented sheets, modals). Views MUST NOT construct ad hoc
   navigation destinations inline; they request navigation through the Router.
@@ -310,9 +524,14 @@ assuming is what makes the budget real.
 
 **Rationale**: Strict concurrency catches data races at compile time, which is
 exactly the class of bug that silently corrupts user data. A single,
-opinionated MV + Stores + Router architecture keeps state ownership and
-navigation predictable, makes logic unit-testable, and prevents the codebase
-from drifting into inconsistent patterns as it grows.
+opinionated MVS + Router architecture keeps state ownership and navigation
+predictable, makes logic unit-testable, and prevents the codebase from drifting
+into inconsistent patterns as it grows. Naming the Store as a layer of the
+pattern rather than an addendum to it is deliberate: it is the only place
+mutable state lives, so "where does this state belong?" and "who is allowed to
+change it?" have one answer on every screen of every project. MVVM's answer —
+one object per view — multiplies state owners as the app grows and pushes
+logic back toward the view it is named after.
 
 ### VI. Localization & Appearance (NON-NEGOTIABLE)
 
@@ -359,6 +578,54 @@ repository. Any additional external/networked dependency beyond Gemini still
 requires the justification above.
 <!-- /PROJECT:external-services -->
 
+### Backend Environments
+
+- Every URL the app talks to MUST be built from a single `BackendEnvironment`
+  type. Base URLs, hosts, and scheme+host string literals MUST NOT appear in
+  Stores, services, views, or anywhere else; call sites build a request by
+  appending a path to `BackendEnvironment.current.baseURL`, never by writing a
+  whole URL.
+- `BackendEnvironment` is an enum of the environments the app actually has —
+  at minimum `debug` and `production`, plus `staging` where one exists — and
+  each case exposes that environment's configuration together: base URL and
+  anything else that legitimately differs per environment (timeouts, logging
+  verbosity, where credentials are read from).
+- **The debug/production decision is made in exactly one place**, and a release
+  build MUST NOT be able to resolve to a non-production backend. Two mechanisms
+  satisfy this and a project may use either: a single `current` guarded by
+  `#if DEBUG` with **production as the `#else`**, so the production case is the
+  compiled-in fallback; or resolving the address from a build setting — an
+  xcconfig value read from the bundle at launch — which moves the choice into
+  the build configuration instead of the source. What is forbidden is the same
+  under both: a runtime default that something else can override, and more than
+  one place that decides.
+- A runtime override for switching environment while testing (a launch
+  argument, a hidden developer setting) is permitted **only** inside `#if
+  DEBUG`, so it is compiled out of release builds entirely.
+- **This governs the backends the app calls, not every URL it holds.** A link
+  the app merely opens — a privacy policy, an EULA, a support page — does not
+  vary by environment and does not belong here; such links live together in
+  their own constant, out of view bodies, and are not a violation of this rule.
+  The moment a link *does* differ between debug and production it has stopped
+  being a link and become configuration, and this rule applies to it.
+- `BackendEnvironment` says *where*, never *what*: API keys and credentials
+  MUST NOT be literals in it (see the external-services rule above). It may
+  name where a secret is read from; it may not contain one.
+- This is auditable by grep, and that is the point: a review MUST be able to
+  confirm zero `URL(string: "http...")` and zero base-URL literals outside
+  `BackendEnvironment`.
+- An app that makes no network call owes no `BackendEnvironment` yet. Like the
+  design system, it is a prerequisite of the first feature that needs one —
+  the first networked call builds it in the same run rather than hardcoding a
+  URL "for now".
+
+**Rationale**: A base URL written at the call site is how a build ships
+pointing at a developer's machine, and how switching backends becomes a
+find-and-replace across the app instead of an edit in one file. Making
+production the `#else` rather than the default value inverts the failure: the
+mistake a tired maintainer makes at 2am is forgetting to flip a flag back, and
+under this rule forgetting is safe.
+
 ## Design System & Color Tokens
 
 Every color in the UI MUST come from the tokenized palette (Principle III),
@@ -375,15 +642,62 @@ The design system also owns, in one place each and drawn from nowhere else:
   sizes are forbidden. Letter-spacing is size-specific: tighter on large
   display text, neutral on body, slightly looser on the smallest labels.
 - **Spacing scale** — one ramp that all padding, insets, and gaps come from.
-- **Motion** — the app's animation vocabulary (see the apple-design section
-  below). Views MUST NOT construct `.spring(...)`/`.easeInOut(...)` inline.
+- **Motion** — the app's animation vocabulary, exposed as named values from a
+  single type (e.g. `AppMotion`) and covering at minimum: a **standard**
+  transition (the house critically-damped spring, used for almost everything),
+  a **gestural** response for motion a drag or flick actually threw (the only
+  place overshoot is permitted), and a **subtle** change for small in-place
+  updates such as a number, badge, or selection. Each named animation is paired
+  with the transition it travels with, so a surface leaves along the path it
+  arrived by. Views MUST NOT construct `.spring(...)`/`.easeInOut(...)` inline,
+  and the Reduce Motion substitution is applied inside the vocabulary once —
+  never re-checked view by view.
 
 These are auditable by grep, and that is the point: a review MUST be able to
-confirm zero color literals, zero raw `.font(.body)`-style calls, and zero
-numeric spacing literals in the view layer.
+confirm zero color literals, zero raw `.font(.body)`-style calls, zero numeric
+spacing literals, and zero inline animation constructors in the view layer.
+
+**The design system is a prerequisite, not a deliverable of its own.** Where a
+required piece of it — the type scale, the spacing scale, the motion vocabulary
+— does not yet exist, building it is part of the first feature that needs it,
+not a reason to defer the rule and not a follow-up task. An implementation run
+that encounters a missing piece MUST create it in the same run, minimally and
+in one place, rather than reaching for a literal or leaving the state change
+unanimated. The Clarification Gate carries any judgement the new piece needs
+(the house spring's feel, the ramp's steps); everything else is already settled
+by the definitions above.
+
+**The palette is ratified with the maintainer, never invented.** There are
+exactly two moments this question is asked, and it MUST be asked at both:
+
+1. when a project first adopts this template, and
+2. every time a project syncs to a template version that changed what a palette
+   must satisfy, or which tokens the table holds.
+
+A sync that leaves both untouched carries the existing palette over unchanged
+and MUST record that in its Sync Impact Report rather than re-opening the
+question. Asking with nothing to decide trains the answer "same as before" and
+spends the gate's credibility on the sync that does have something at stake.
+The one exception is failure, below: a palette that misses 4.5:1 anywhere is
+re-opened on **any** sync.
+
+The question follows the Clarification Gate format below — three complete,
+concrete palette proposals, each with the light and dark hex for every token in
+the table, each described by the mood and purpose it fits, with one marked
+**Recommended** and the reason given. The maintainer may of course answer with
+their own colors instead. Until it is answered, no UI work proceeds: the
+`PROJECT:palette` table MUST NOT be left with `#______` placeholders, filled in
+from another project's palette, or chosen unilaterally by tooling. Every
+proposal offered MUST already meet the 4.5:1 requirement of Principle III in
+both appearances; on a sync, if the palette already in the project fails that
+anywhere, keeping it is not one of the options and the failure MUST be stated
+in the question.
 
 <!-- PROJECT:palette -->
-This project's ratified palette — a green health identity.
+This project's ratified palette — a green health identity. Ratified unchanged
+by the maintainer at the v2.1.0 sync (2026-08-03), against two alternative
+full proposals that also met 4.5:1; the green identity and the already-paid
+contrast audit carried the decision.
 
 Tokens live as color sets in `Kalorias/Assets.xcassets/Palette/` (each with a
 light and dark variant) and are exposed in
@@ -517,6 +831,33 @@ the spec → plan → tasks → implement flow. Every feature's plan MUST pass t
 Constitution Check gate (defined in `.specify/templates/plan-template.md`)
 before implementation begins and again after design is complete.
 
+### Clarification Gate (NON-NEGOTIABLE)
+
+At the end of **every** `/speckit-specify` run and **every** `/speckit-plan`
+run — before the next command in the flow begins — every open question,
+ambiguity, contradiction, missing decision, or error discovered MUST be put to
+the maintainer and answered. Nothing is left in doubt and nothing is settled by
+assumption.
+
+- Each question MUST offer **exactly three** concrete options wherever the
+  problem admits three, with one marked **Recommended** and a one-line reason
+  for that recommendation. Where three genuinely distinct options do not exist,
+  the question says so and offers the ones that do — padding a question with a
+  straw option is worse than offering two.
+- Options MUST be real, mutually exclusive, and specific enough to act on
+  ("store the total as `Decimal` in minor units" — not "handle money
+  correctly"). The maintainer may always answer something outside the three;
+  that possibility is implicit and need not be listed as an option.
+- Questions MUST be asked as a batch at the gate rather than dribbled out
+  mid-run, and each one MUST say what it blocks, so the maintainer can see the
+  cost of each answer.
+- Answers MUST be written back into the spec or plan **in the same run**, in
+  the maintainer's words where they gave them. No `[NEEDS CLARIFICATION]`
+  marker, TODO, placeholder, or open question may survive into
+  `/speckit-tasks` or `/speckit-implement`.
+- If a run genuinely surfaces nothing open, that MUST be stated explicitly —
+  the gate is passed out loud, never skipped in silence.
+
 Pull requests MUST confirm, before merge:
 
 - build succeeds with **zero warnings** under Swift 6 strict concurrency;
@@ -524,13 +865,17 @@ Pull requests MUST confirm, before merge:
   tests;
 - all new user-facing strings have English **and** Spanish values;
 - all colors come from the tokenized palette, and the design-system audits
-  (no color literals, no raw font calls, no numeric spacing literals in the
-  view layer) come back clean;
+  (no color literals, no raw font calls, no numeric spacing literals, no inline
+  `.spring(...)`/`.easeInOut(...)` in the view layer) come back clean;
+- every new or changed observable state transition is animated from the motion
+  vocabulary, and the flow was checked once with Reduce Motion on;
 - any translucent surface uses Apple's own APIs directly, and its use is
   justifiable against the `apple-design` guidance rather than applied by
   default;
 - no `glassCard`, `glassActionButton`, or equivalent glass-convenience wrapper
   exists anywhere in the project;
+- no networked URL is built from a literal — every one comes from
+  `BackendEnvironment`, and the release path resolves to production;
 - new/changed UI has been verified in both light and dark appearances.
 
 UI tests (Principle II) are off by default and are authored and run only when
@@ -569,9 +914,33 @@ documents the deviation in its plan's Complexity Tracking section.
 
 A change to a PROJECT block affects only that project.
 
+**Project extensions.** A project MAY add PROJECT blocks beyond the ones this
+template defines, on one condition: the extension is **additive**. It MUST
+satisfy the SHARED rule it extends and then go further — never relax it, narrow
+it, or replace it. An app shipping a third language on top of the mandatory
+English and Spanish is additive and needs no permission; an app declaring it
+ships Spanish only is not, and that is either a change to the template for
+everyone or a documented deviation in Complexity Tracking, never a local block.
+
+An extension block MUST state, inside the block, which SHARED rule it extends
+and what it adds on top. Given that, it is an extension and not a divergence,
+and the sync tooling MUST NOT report it as one — the check that matters is that
+no required block is missing and no shared text was edited. What an extension
+block may never be is a rule that contradicts the shared text, filed under a
+name the tooling does not recognise.
+
+**Numbering.** An extension that adds a principle and numbers it in the shared
+Roman sequence is inviting a collision: the next principle this template adds
+takes the next free numeral, and the project then holds two principles with the
+same number and a spec history pointing at the wrong one. Prefer a distinct
+label over a number in the shared run. Where a collision does happen anyway,
+renumbering the extension is right in principle and usually not worth it in
+practice — cross-references in closed feature specs recorded a decision under
+the number it had at the time, and rewriting them rewrites the record.
+
 All plans and PRs MUST verify compliance with this constitution; any
 deviation MUST be justified in the plan's Complexity Tracking section rather
 than silently introduced.
 
-**Version**: 3.1.0 | **Ratified**: 2026-07-24 | **Last Amended**: 2026-08-01
-**Template**: TemplateConstitution v2.0.0
+**Version**: 3.4.1 | **Ratified**: 2026-07-24 | **Last Amended**: 2026-08-21
+**Template**: TemplateConstitution v3.0.2
