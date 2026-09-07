@@ -15,7 +15,7 @@ Tres ficheros, y nada más:
 
 | Fichero | Qué es | ¿Se despliega? |
 |---|---|---|
-| `questionnaire.source.json` | El cuestionario. La única fuente de verdad | Sí |
+| `questionnaire.es.json`, `questionnaire.en.json` | El cuestionario, uno por idioma. La única fuente de verdad | Sí |
 | `questionnaire.schema.json` | JSON Schema 2020-12 que lo valida | No, sólo CI |
 | `validate.py` | Las comprobaciones que un JSON Schema no puede hacer | No, sólo CI |
 
@@ -86,9 +86,9 @@ Validación mínima en servidor, porque el cliente **puede estar desactualizado*
 ## 3. Cómo se actualiza el formulario
 
 ```bash
-$EDITOR questionnaire.source.json     # 1. editar
+$EDITOR questionnaire.es.json         # 1. editar (y el resto de idiomas)
 # 2. subir contentVersion
-python3 validate.py questionnaire.*.json   # 3. validar, todos los idiomas a la vez
+python3 validate.py                    # 3. validar todos los idiomas y compararlos
 git commit && deploy                       # 4. desplegar
 ```
 
@@ -107,9 +107,16 @@ Al abrir la app, el usuario siguiente ve el cuestionario nuevo. Nadie actualiza 
 
 ### Idiomas
 
-Un fichero por idioma (`questionnaire.es.json`, `questionnaire.en.json`), con **los mismos ids**.
-`validate.py` con varios ficheros compara las estructuras y falla si a una traducción le falta
-una opción o le sobra una burbuja, que es exactamente lo que pasa al traducir.
+Un fichero por idioma, con **los mismos ids en el mismo orden**. `validate.py` sin argumentos
+valida todos y compara sus estructuras: falla si a una traducción le falta una opción o le sobra
+una burbuja, que es exactamente lo que pasa al traducir.
+
+Entre idiomas sólo cambian los textos, `locale` y los `defaultUnit` (`kg`/`cm` en `es`,
+`lb`/`ft/in` en `en`). Ese default lo puede pisar el sistema de medida del dispositivo, que es
+una elección real del usuario mientras que el idioma no lo es.
+
+Si llega un `Accept-Language` que no existe, se responde en `es` y se declara en `locale`. La app
+muestra lo que llegue.
 
 Los textos van ya traducidos en el JSON, no son claves de `Localizable.xcstrings`: si lo fueran,
 añadir una pregunta exigiría una release, que es lo que este diseño evita.

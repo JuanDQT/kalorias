@@ -9,7 +9,7 @@ entre preguntas y, sobre todo, su **orden**. Una condición que apunta a una
 pregunta posterior no falla al validar el JSON, falla en producción, en el
 dispositivo de un usuario, como una pregunta que no aparece nunca.
 
-    python3 validate.py [fichero...]
+    python3 validate.py [fichero...]      # sin argumentos: todos los idiomas
 
 Con más de un fichero valida cada uno y además compara sus estructuras: es la
 comprobación que hace falta al traducir, donde lo que se rompe no es el JSON
@@ -18,11 +18,13 @@ sino la correspondencia de ids entre idiomas.
 Salida 0 si todo correcto, 1 si hay errores. Los avisos no rompen la salida.
 """
 
+import glob
 import json
 import re
 import sys
 from datetime import date, timedelta
 
+SCHEMA_FILE = "questionnaire.schema.json"
 CHOICE_TYPES = {"single_choice", "multi_choice"}
 NUMERIC_TYPES = {"measure", "number"}
 STAGES = ("onboarding", "profile")
@@ -97,7 +99,7 @@ def main(path: str) -> int:
             "`pip install jsonschema` para la validación completa"
         )
     else:
-        schema = json.load(open("questionnaire.schema.json", encoding="utf-8"))
+        schema = json.load(open(SCHEMA_FILE, encoding="utf-8"))
         v = jsonschema.Draft202012Validator(schema)
         for e in sorted(v.iter_errors(doc), key=lambda e: list(e.path)):
             errors.append("/" + "/".join(str(p) for p in e.path) + ": " + e.message)
@@ -339,7 +341,9 @@ def compare(paths: list[str]) -> int:
 
 
 if __name__ == "__main__":
-    args = sys.argv[1:] or ["questionnaire.source.json"]
+    # `questionnaire.*.json` también casa con el propio esquema, que no es un cuestionario.
+    args = sys.argv[1:] or [f for f in sorted(glob.glob("questionnaire.*.json"))
+                            if f != SCHEMA_FILE]
     status = 0
     for a in args:
         print(f"--- {a}")

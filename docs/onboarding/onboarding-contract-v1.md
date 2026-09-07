@@ -11,9 +11,9 @@ Ficheros de este directorio:
 
 | Fichero | Qué es |
 |---|---|
-| `questionnaire.source.json` | El cuestionario. **Única fuente de verdad**, la copia el backend |
+| `questionnaire.es.json`, `questionnaire.en.json` | El cuestionario, un fichero por idioma. **Única fuente de verdad**, los copia el backend |
 | `questionnaire.schema.json` | JSON Schema 2020-12 que lo valida |
-| `validate.py` | Las comprobaciones que un JSON Schema no puede hacer. Sólo stdlib |
+| `validate.py` | Las comprobaciones que un JSON Schema no puede hacer, y la comparación entre idiomas. Sólo stdlib |
 | `answers-v1.example.json` | Lo que la app envía al terminar |
 | `backend-brief.md` | Los dos endpoints y cómo se actualiza el formulario |
 | este documento | Las reglas que ningún JSON puede expresar por sí solo |
@@ -186,6 +186,12 @@ nueva y se ajusta al `step` **solo para mostrarlo**. El canónico se reescribe �
 el usuario mueve la rueda. Si cada cambio de unidad reescribiera el canónico, kg → lb → kg diez
 veces desplazaría el peso del usuario redondeo a redondeo.
 
+**`defaultUnit` es una sugerencia, no una orden.** Si el sistema de medida del dispositivo
+(`Locale.current.measurementSystem`) contradice al del fichero, **gana el dispositivo**: el
+idioma no dice el sistema de medida —hay hispanohablantes en Estados Unidos y angloparlantes en
+España— y el ajuste del teléfono sí es una elección del usuario. El fichero sólo aporta el punto
+de partida para cuando no hay nada mejor.
+
 `unitFollows` y `defaultFollows` (en `weight_goal` → `weight_current`) hacen que el objetivo de
 peso abra en la misma unidad y cerca del valor que el usuario acaba de introducir. Quien pesa en
 libras no quiere elegir libras dos veces.
@@ -317,6 +323,28 @@ de 19» que pasa a «12 de 17» se lee como un fallo.
 
 ---
 
+## 7.1 Idiomas
+
+Un fichero por idioma, **con los mismos ids en el mismo orden**. Lo que cambia entre ellos es
+sólo texto, más `locale` y los `defaultUnit`. Todo lo demás —rangos, pasos, factores de
+conversión, condiciones— es idéntico por construcción.
+
+`python3 validate.py` sin argumentos valida todos los `questionnaire.*.json` y además compara sus
+estructuras: falla si a una traducción le falta una opción, le sobra una burbuja o alguien
+cambió un `type`. Es el error que aparece al traducir, y no lo detecta ningún JSON Schema porque
+cada fichero es válido por separado.
+
+**Un número dentro de un `description` no es el número que usa el backend.** «0,5 kg por semana»
+y «About 1 lb a week» son el mismo `optionId` `steady` y el mismo déficit, aunque redondeen
+distinto. El texto orienta al usuario; el valor lo decide el servidor a partir del id. Escribir
+una cifra exacta en un idioma y otra en otro no crea una incoherencia — creerse la cifra del
+texto, sí.
+
+Si el servidor no tiene el idioma pedido, responde en `es` y lo declara en `locale`. La app
+muestra lo que llegue: media traducción es peor que un idioma coherente que no es el preferido.
+
+---
+
 ## 8. Envío
 
 Una sola petición al terminar, no una por respuesta. Ver `answers-v1.example.json`.
@@ -355,7 +383,9 @@ producto. Merece una decisión consciente antes de implementar, no después.
 5. **Editar hacia atrás no trunca el hilo**, solo poda lo que quedó invalidado.
 6. **Una pregunta de `onboarding` no puede depender de una de `profile`.** No se habrá
    respondido, así que nunca aparece. No falla nada: simplemente no se pregunta.
-7. **Un `emoji` es texto**, y VoiceOver lo lee. El `title` va antes que el emoji en el orden de
+7. **Las cifras dentro de un `description` redondean distinto en cada idioma**, a propósito. El
+   déficit sale del `optionId`, nunca del texto.
+8. **Un `emoji` es texto**, y VoiceOver lo lee. El `title` va antes que el emoji en el orden de
    lectura, y el emoji se marca como decorativo cuando el `title` ya lo dice todo (Principio VI
    de la constitución).
 
