@@ -118,11 +118,25 @@ struct CameraCaptureView: View {
             .ignoresSafeArea()
 
             // Freeze the captured still over the live preview.
+            //
+            // `scaledToFit`, NOT `scaledToFill`. The captured image is already
+            // cropped to the send frame — a square — and filling a tall screen
+            // with a square scales it by the height and discards roughly half of
+            // its width. The user would confirm LESS than what gets sent, which
+            // is exactly what FR-012 and SC-005 forbid; it also reads as a wild
+            // zoom that the camera never applied.
+            //
+            // The black backdrop is load-bearing, not styling: the session keeps
+            // running after a shot, so the letterbox bands `fit` leaves would
+            // otherwise show the live preview still moving behind the still.
             if let image = store.captureState.capturedImage {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
+                Color.black
                     .ignoresSafeArea()
+                    .overlay {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                    }
             }
 
             VStack {

@@ -237,6 +237,75 @@ Templates reviewed at this sync:
 - ✅ .specify/templates/spec-template.md — no principle-specific references.
 - ✅ .specify/templates/tasks-template.md — generic; still correctly excludes
   UI-test tasks from implement-phase plans.
+
+AMENDMENT 4.0.0 (2026-09-01) — analysis moved to the Kalorias backend
+--------------------------------------------------------------------
+Bump rationale: MAJOR — backward-incompatible, by this file's own test: code
+that complied before now violates. Under 3.4.1 the approved architecture was the
+app calling **Google Gemini** directly with a key read from a build setting, and
+4.0.0 forbids precisely that. Feature 002 was compliant when it shipped and
+would not be accepted today. No SHARED section changed — both edits are PROJECT
+blocks — so there is no template change and no propagation to other projects.
+
+What changed and why: feature 009 moved photo analysis to the Kalorias backend.
+The app uploads the photo to a service the project owns and receives foods,
+calories, macros and regions back; the prompt, the response schema and the
+provider credential all live on the server. The driver was the credential. A key
+in a distributed binary is extractable and cannot be rotated without an App
+Store release, so confining it to a git-ignored file was never enough — it kept
+the key out of the repository while shipping it to every user. Two PROJECT
+blocks are restated:
+  1. **Product Overview** — step 2 of the core flow names the Kalorias backend
+     rather than Google Gemini, and records that the app holds neither the
+     prompt, the schema, nor a provider credential.
+  2. **Technology Constraints / external services** — the Kalorias backend is
+     the one approved external service; the ban on *committing* credentials is
+     widened to holding one at all, in the binary or in a build setting; and the
+     provider's identity, HTTP status codes and internal identifiers are barred
+     from the UI, which `CalorieAnalysisErrorMappingTests` already enforces.
+
+The palette was NOT re-ratified: this amendment changes no palette rule and no
+token, so the green health identity ratified at the 3.2.0 sync carries over
+unchanged and still passes 4.5:1 under `PaletteContrastTests`.
+
+Prior debt closed, verified in the code at this amendment:
+- The 3.4.0 record above lists
+  `Kalorias/Features/Analysis/GeminiCalorieService.swift:68` as embedding a base
+  URL that must move to `BackendEnvironment`. That file no longer exists;
+  `Kalorias/Support/BackendEnvironment.swift` resolves the address from the
+  `KaloriasAPIBaseURL` build setting and `BackendEnvironmentTests` proves it
+  parses to an absolute URL. **The 3.4.0 record is left standing as written** —
+  it was true when it ran, and this project supersedes its history rather than
+  rewriting it.
+- MOTION_VOCABULARY and MOTION_ADOPTION, open since 3.2.0, are closed:
+  `Kalorias/DesignSystem/AppMotion.swift` exists with standard/gestural/subtle
+  and the Reduce Motion substitution applied inside the vocabulary once, and the
+  inline `.easeInOut(duration: 0.15)` in `CameraCaptureView` is gone. The grep
+  audit returns zero inline animation constructors in the view layer.
+
+Templates reviewed at this amendment:
+- ✅ .specify/templates/plan-template.md — generic Constitution Check gate; no
+  provider-specific text.
+- ✅ .specify/templates/spec-template.md — no principle-specific references.
+- ✅ .specify/templates/tasks-template.md — generic; still correctly excludes
+  UI-test tasks from implement-phase plans.
+- ✅ .specify/workflows/speckit/workflow.yml names "gemini", but as an *agent
+  integration* choice (the Gemini CLI), unrelated to the app's external service.
+  Left unchanged deliberately.
+
+Follow-up TODO (code and operations, not a constitution change):
+- TODO(REVOKE_GEMINI_KEY): specs/009 task T053 is still open. The key was never
+  committed, but it shipped inside every build made before feature 009 and is
+  still live at the provider. It MUST be revoked there; deleting it from the
+  project does not stop it working.
+  **RESOLVED the same day (2026-09-01), by maintainer decision, without
+  revoking**: the app was never distributed — no build ever left the
+  maintainer's machine, so the embedded key never reached anyone else's device
+  and the exposure the TODO guards against never materialised. The TODO text
+  above is left standing as written rather than deleted, so the reasoning is
+  auditable: the key remains valid at the provider, and this closure holds only
+  while no pre-009 build is distributed. Distributing one reopens it.
+  This changes no normative clause, so it carries no version bump of its own.
 -->
 
 # Kalorias Constitution
@@ -248,8 +317,10 @@ Kalorias is a native iOS app for counting calories that starts from a
 **photo**. The core flow is:
 
 1. The user takes or picks a **photo of their food**.
-2. The image is sent to **Google Gemini**, which analyzes it and estimates the
-   food's **calorie count** (and macronutrients).
+2. The app sends the image to the **Kalorias backend**, which analyzes it and
+   returns the food's **calorie count** (and macronutrients). The backend owns
+   the analysis prompt, the response schema and the AI-provider credential; the
+   app holds none of the three and never calls a provider directly.
 3. Kalorias returns that estimate to the user and logs it toward their daily
    and goal totals.
 
@@ -568,13 +639,29 @@ SwiftData) over external packages unless a dependency provides functionality
 that would otherwise require significant, hard-to-maintain custom code.
 
 <!-- PROJECT:external-services -->
-**Google Gemini** is the one approved external service: it powers the core
-photo-to-calories estimation (see Product Overview) and cannot be replaced by
-an on-device Apple framework at the required quality. Its use MUST be confined
-to a dedicated service/Store boundary (never called from view bodies), MUST
-run off the main thread, and MUST degrade gracefully when the network or the
-model is unavailable. API keys and credentials MUST NOT be committed to the
-repository. Any additional external/networked dependency beyond Gemini still
+The **Kalorias backend** is the one approved external service: it powers the
+core photo-to-calories estimation (see Product Overview), which cannot be
+replaced by an on-device Apple framework at the required quality. Its use MUST
+be confined to a dedicated service/Store boundary (never called from view
+bodies), MUST run off the main thread, and MUST degrade gracefully when the
+network or the service is unavailable.
+
+**The app MUST NOT hold an AI-provider credential, and MUST NOT call an AI
+provider directly.** The backend owns the prompt, the response schema and the
+provider key. Keeping a key out of the repository is necessary but not
+sufficient: a key inside a distributed binary is extractable by anyone who
+installs the app and cannot be rotated without an App Store release, so it MUST
+also be out of the build. API keys and credentials MUST NOT be committed to the
+repository **and MUST NOT be read into the app from a build setting** —
+`Config/Secrets.xcconfig` carries a service address and nothing else.
+
+The app MUST NOT disclose which provider the backend uses. Provider names, HTTP
+status codes and internal identifiers MUST NOT reach the UI; the user sees a
+plain, actionable message instead (`CalorieAnalysisErrorMappingTests` enforces
+this, and Principle VI's rule that a raw technical identifier is never what
+VoiceOver reads aloud applies to these too).
+
+Any additional external/networked dependency beyond the Kalorias backend still
 requires the justification above.
 <!-- /PROJECT:external-services -->
 
@@ -942,5 +1029,5 @@ All plans and PRs MUST verify compliance with this constitution; any
 deviation MUST be justified in the plan's Complexity Tracking section rather
 than silently introduced.
 
-**Version**: 3.4.1 | **Ratified**: 2026-07-24 | **Last Amended**: 2026-08-21
+**Version**: 4.0.0 | **Ratified**: 2026-07-24 | **Last Amended**: 2026-09-01
 **Template**: TemplateConstitution v3.0.2
