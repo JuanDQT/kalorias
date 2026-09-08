@@ -6,12 +6,24 @@
 //  shared Liquid Glass bottom bar, and presents the camera flow (permission
 //  gate or live camera) as a single full-screen cover.
 //
+//  THE ONBOARDING COVERS EVERYTHING UNTIL IT IS DONE. It is presented over the
+//  shell rather than replacing it so the app behind it is already built and
+//  warm when the chat dismisses — and so that finishing is one flag flip, with
+//  no navigation state to unwind.
+//
+//  THE FLAG IS WRITTEN ONLY AFTER THE ANSWERS ARE ACCEPTED BY THE SERVER. If it
+//  were set when the chat opened, a user who dies on the last question would
+//  never be asked again and would have no plan. The half-finished draft is what
+//  survives a kill; this flag means "the server has it".
+//
 
 import SwiftUI
 
 struct RootView: View {
     @Environment(Router.self) private var router
     @Environment(CameraPermissionStore.self) private var permission
+
+    @AppStorage("onboarding.completed") private var hasCompletedOnboarding = false
 
     var body: some View {
         @Bindable var router = router
@@ -39,6 +51,9 @@ struct RootView: View {
             )
             .padding(.bottom, 8)
             .frame(maxHeight: .infinity, alignment: .bottom)
+        }
+        .fullScreenCover(isPresented: .constant(hasCompletedOnboarding == false)) {
+            OnboardingChatView { hasCompletedOnboarding = true }
         }
         .fullScreenCover(item: $router.cameraFlow) { flow in
             switch flow {

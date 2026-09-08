@@ -1,0 +1,870 @@
+{
+  "data": {
+    "onboardingId": "plan_v1",
+    "schemaVersion": 1,
+    "contentVersion": 4,
+    "locale": "es",
+    "sections": [
+      {
+        "id": "intro",
+        "title": "Bienvenida",
+        "countsTowardProgress": false,
+        "questions": [
+          {
+            "id": "welcome",
+            "type": "info",
+            "prompt": [
+              "¡Hola! 👋",
+              "Voy a hacerte unas preguntas para crear tu plan. Tarda menos de dos minutos y podrás cambiar cualquier respuesta antes de terminar."
+            ],
+            "continueLabel": "Empezar"
+          }
+        ]
+      },
+      {
+        "id": "goals",
+        "title": "Tus objetivos",
+        "subtitle": "Para saber a dónde vamos",
+        "questions": [
+          {
+            "id": "goal_primary",
+            "type": "single_choice",
+            "prompt": [
+              "¿Qué quieres conseguir con Kalorias?"
+            ],
+            "options": [
+              {
+                "id": "lose_weight",
+                "title": "Perder peso",
+                "description": "Bajar grasa manteniendo el músculo",
+                "emoji": "🔥"
+              },
+              {
+                "id": "maintain",
+                "title": "Mantener mi peso",
+                "description": "Comer mejor sin cambiar la báscula",
+                "emoji": "⚖️"
+              },
+              {
+                "id": "gain_muscle",
+                "title": "Ganar músculo",
+                "description": "Subir de peso de forma controlada",
+                "emoji": "💪"
+              }
+            ]
+          },
+          {
+            "id": "wants_meal_plan",
+            "type": "single_choice",
+            "prompt": [
+              "¿Quieres que te preparemos un plan de alimentación?"
+            ],
+            "options": [
+              {
+                "id": "yes",
+                "title": "Sí, propónmelo",
+                "description": "Te sugerimos comidas para cada día",
+                "emoji": "🥗"
+              },
+              {
+                "id": "no",
+                "title": "No, solo quiero contar",
+                "description": "Tú decides qué comer, yo llevo la cuenta",
+                "emoji": "📊"
+              }
+            ]
+          },
+          {
+            "id": "motivation_level",
+            "type": "single_choice",
+            "prompt": [
+              "¿Qué tan motivado te sientes ahora mismo?"
+            ],
+            "options": [
+              {
+                "id": "low",
+                "title": "Lo estoy intentando",
+                "description": "Necesito que me lo pongas fácil",
+                "emoji": "🙂"
+              },
+              {
+                "id": "medium",
+                "title": "Con ganas",
+                "description": "Voy a por ello",
+                "emoji": "😃"
+              },
+              {
+                "id": "high",
+                "title": "A tope",
+                "description": "Nada me va a parar",
+                "emoji": "🚀"
+              }
+            ]
+          },
+          {
+            "id": "calorie_experience",
+            "type": "single_choice",
+            "prompt": [
+              "¿Has contado calorías antes?"
+            ],
+            "options": [
+              {
+                "id": "never",
+                "title": "Nunca",
+                "description": "Es mi primera vez",
+                "emoji": "🌱"
+              },
+              {
+                "id": "tried",
+                "title": "Lo he intentado",
+                "description": "Lo dejé a las pocas semanas",
+                "emoji": "🔁"
+              },
+              {
+                "id": "habitual",
+                "title": "Sí, es un hábito",
+                "description": "Lo hago de forma habitual",
+                "emoji": "✅"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "about_you",
+        "title": "Sobre ti",
+        "subtitle": "Con esto calculamos tus calorías diarias",
+        "questions": [
+          {
+            "id": "sex",
+            "type": "single_choice",
+            "prompt": [
+              "¿Cuál es tu sexo biológico?",
+              "Cambia bastante el cálculo del metabolismo basal, por eso lo preguntamos."
+            ],
+            "options": [
+              {
+                "id": "male",
+                "title": "Hombre",
+                "emoji": "♂️"
+              },
+              {
+                "id": "female",
+                "title": "Mujer",
+                "emoji": "♀️"
+              },
+              {
+                "id": "unspecified",
+                "title": "Prefiero no decirlo",
+                "description": "Usaremos un cálculo intermedio",
+                "emoji": "🤍"
+              }
+            ]
+          },
+          {
+            "id": "birth_date",
+            "type": "date",
+            "prompt": [
+              "¿Cuándo naciste?"
+            ],
+            "date": {
+              "mode": "date",
+              "minDate": "today-100y",
+              "maxDate": "today-16y",
+              "default": "today-30y",
+              "displayFormat": "long"
+            }
+          },
+          {
+            "id": "height",
+            "type": "measure",
+            "prompt": [
+              "¿Cuánto mides?"
+            ],
+            "measure": {
+              "widget": "wheel",
+              "canonicalUnit": "cm",
+              "defaultUnit": "cm",
+              "units": [
+                {
+                  "id": "cm",
+                  "label": "cm",
+                  "components": [
+                    {
+                      "id": "cm",
+                      "label": "cm",
+                      "min": 120,
+                      "max": 240,
+                      "step": 1,
+                      "default": 170,
+                      "decimals": 0,
+                      "toCanonical": 1
+                    }
+                  ]
+                },
+                {
+                  "id": "ft_in",
+                  "label": "ft/in",
+                  "components": [
+                    {
+                      "id": "ft",
+                      "label": "ft",
+                      "min": 4,
+                      "max": 7,
+                      "step": 1,
+                      "default": 5,
+                      "decimals": 0,
+                      "toCanonical": 30.48
+                    },
+                    {
+                      "id": "in",
+                      "label": "in",
+                      "min": 0,
+                      "max": 11,
+                      "step": 1,
+                      "default": 7,
+                      "decimals": 0,
+                      "toCanonical": 2.54
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "weight_current",
+            "type": "measure",
+            "prompt": [
+              "¿Cuánto pesas ahora?"
+            ],
+            "measure": {
+              "widget": "wheel",
+              "canonicalUnit": "kg",
+              "defaultUnit": "kg",
+              "units": [
+                {
+                  "id": "kg",
+                  "label": "kg",
+                  "components": [
+                    {
+                      "id": "kg",
+                      "label": "kg",
+                      "min": 30,
+                      "max": 250,
+                      "step": 0.1,
+                      "default": 70,
+                      "decimals": 1,
+                      "toCanonical": 1
+                    }
+                  ]
+                },
+                {
+                  "id": "lb",
+                  "label": "lb",
+                  "components": [
+                    {
+                      "id": "lb",
+                      "label": "lb",
+                      "min": 66,
+                      "max": 550,
+                      "step": 0.2,
+                      "default": 154,
+                      "decimals": 1,
+                      "toCanonical": 0.45359237
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "training_frequency",
+            "type": "single_choice",
+            "prompt": [
+              "¿Cuántos días a la semana entrenas?"
+            ],
+            "options": [
+              {
+                "id": "d0",
+                "title": "Ninguno",
+                "description": "No entreno por ahora",
+                "emoji": "🛋️"
+              },
+              {
+                "id": "d1_2",
+                "title": "1 o 2 días",
+                "description": "Algo suelto",
+                "emoji": "🚶"
+              },
+              {
+                "id": "d3_4",
+                "title": "3 o 4 días",
+                "description": "Bastante constante",
+                "emoji": "🏃"
+              },
+              {
+                "id": "d5_6",
+                "title": "5 o 6 días",
+                "description": "Casi a diario",
+                "emoji": "🏋️"
+              },
+              {
+                "id": "d7",
+                "title": "Todos los días",
+                "description": "Sin descanso",
+                "emoji": "🔥"
+              }
+            ]
+          },
+          {
+            "id": "lifestyle_activity",
+            "type": "single_choice",
+            "prompt": [
+              "Fuera del entrenamiento, ¿cómo es tu día a día?",
+              "Piensa en el trabajo y en cómo te mueves normalmente."
+            ],
+            "options": [
+              {
+                "id": "sedentary",
+                "title": "Sentado casi todo el día",
+                "description": "Oficina, estudio, conducir",
+                "emoji": "💻"
+              },
+              {
+                "id": "light",
+                "title": "De pie a ratos",
+                "description": "Me levanto y ando a menudo",
+                "emoji": "🚶"
+              },
+              {
+                "id": "active",
+                "title": "En movimiento",
+                "description": "Camino mucho durante el día",
+                "emoji": "🏃"
+              },
+              {
+                "id": "very_active",
+                "title": "Trabajo físico",
+                "description": "Cargo peso o estoy de pie todo el día",
+                "emoji": "🧱"
+              }
+            ]
+          },
+          {
+            "id": "health_conditions_any",
+            "type": "single_choice",
+            "prompt": [
+              "¿Tienes alguna condición de salud que debamos tener en cuenta?"
+            ],
+            "options": [
+              {
+                "id": "yes",
+                "title": "Sí",
+                "emoji": "🩺"
+              },
+              {
+                "id": "no",
+                "title": "No, ninguna",
+                "emoji": "👍"
+              }
+            ]
+          },
+          {
+            "id": "health_conditions",
+            "type": "multi_choice",
+            "visibleIf": {
+              "all": [
+                {
+                  "questionId": "health_conditions_any",
+                  "operator": "equals",
+                  "value": "yes"
+                }
+              ]
+            },
+            "prompt": [
+              "¿Cuál o cuáles?",
+              "Puedes marcar varias."
+            ],
+            "confirmLabel": "Confirmar",
+            "validation": {
+              "minSelections": 1
+            },
+            "options": [
+              {
+                "id": "diabetes_t1",
+                "title": "Diabetes tipo 1",
+                "emoji": "🩸"
+              },
+              {
+                "id": "diabetes_t2",
+                "title": "Diabetes tipo 2",
+                "emoji": "🩸"
+              },
+              {
+                "id": "hypertension",
+                "title": "Hipertensión",
+                "emoji": "❤️"
+              },
+              {
+                "id": "cholesterol",
+                "title": "Colesterol alto",
+                "emoji": "🫀"
+              },
+              {
+                "id": "thyroid",
+                "title": "Tiroides",
+                "description": "Hipo o hipertiroidismo",
+                "emoji": "🦋"
+              },
+              {
+                "id": "pcos",
+                "title": "SOP",
+                "description": "Síndrome de ovario poliquístico",
+                "emoji": "🌸"
+              },
+              {
+                "id": "kidney",
+                "title": "Problemas renales",
+                "emoji": "🫘"
+              },
+              {
+                "id": "eating_disorder",
+                "title": "Trastorno de la conducta alimentaria",
+                "emoji": "🤍"
+              },
+              {
+                "id": "pregnancy",
+                "title": "Embarazo o lactancia",
+                "emoji": "🤱"
+              }
+            ],
+            "allowsCustom": {
+              "enabled": true,
+              "label": "Añadir otra",
+              "placeholder": "Ej. Celiaquía",
+              "maxItems": 3,
+              "maxLength": 60
+            }
+          },
+          {
+            "id": "health_disclaimer",
+            "type": "info",
+            "visibleIf": {
+              "all": [
+                {
+                  "questionId": "health_conditions_any",
+                  "operator": "equals",
+                  "value": "yes"
+                }
+              ]
+            },
+            "prompt": [
+              "Gracias por contármelo. Lo tendré en cuenta, pero Kalorias no es un consejo médico: consulta con tu médico o dietista antes de cambiar tu alimentación."
+            ],
+            "continueLabel": "Entendido"
+          },
+          {
+            "id": "weight_goal",
+            "type": "measure",
+            "visibleIf": {
+              "all": [
+                {
+                  "questionId": "goal_primary",
+                  "operator": "notEquals",
+                  "value": "maintain"
+                }
+              ]
+            },
+            "prompt": [
+              "¿Cuál es tu peso objetivo?"
+            ],
+            "measure": {
+              "widget": "wheel",
+              "canonicalUnit": "kg",
+              "unitFollows": "weight_current",
+              "defaultFollows": "weight_current",
+              "defaultUnit": "kg",
+              "units": [
+                {
+                  "id": "kg",
+                  "label": "kg",
+                  "components": [
+                    {
+                      "id": "kg",
+                      "label": "kg",
+                      "min": 30,
+                      "max": 250,
+                      "step": 0.1,
+                      "default": 65,
+                      "decimals": 1,
+                      "toCanonical": 1
+                    }
+                  ]
+                },
+                {
+                  "id": "lb",
+                  "label": "lb",
+                  "components": [
+                    {
+                      "id": "lb",
+                      "label": "lb",
+                      "min": 66,
+                      "max": 550,
+                      "step": 0.2,
+                      "default": 143,
+                      "decimals": 1,
+                      "toCanonical": 0.45359237
+                    }
+                  ]
+                }
+              ]
+            },
+            "crossChecks": [
+              {
+                "severity": "warning",
+                "when": {
+                  "all": [
+                    {
+                      "questionId": "goal_primary",
+                      "operator": "equals",
+                      "value": "lose_weight"
+                    }
+                  ]
+                },
+                "rule": "lessThan",
+                "compareTo": "weight_current",
+                "message": "Has elegido perder peso, pero tu objetivo es mayor que tu peso actual. ¿Quieres revisarlo?"
+              },
+              {
+                "severity": "warning",
+                "when": {
+                  "all": [
+                    {
+                      "questionId": "goal_primary",
+                      "operator": "equals",
+                      "value": "gain_muscle"
+                    }
+                  ]
+                },
+                "rule": "greaterThan",
+                "compareTo": "weight_current",
+                "message": "Has elegido ganar músculo, pero tu objetivo es menor que tu peso actual. ¿Quieres revisarlo?"
+              }
+            ]
+          },
+          {
+            "id": "goal_pace_loss",
+            "type": "single_choice",
+            "visibleIf": {
+              "all": [
+                {
+                  "questionId": "goal_primary",
+                  "operator": "equals",
+                  "value": "lose_weight"
+                }
+              ]
+            },
+            "prompt": [
+              "¿A qué ritmo quieres perderlo?"
+            ],
+            "options": [
+              {
+                "id": "slow",
+                "title": "Tranquilo",
+                "description": "0,25 kg por semana. Casi no lo notarás",
+                "emoji": "🐢"
+              },
+              {
+                "id": "steady",
+                "title": "Constante",
+                "description": "0,5 kg por semana. El más recomendable",
+                "emoji": "🚶"
+              },
+              {
+                "id": "fast",
+                "title": "Rápido",
+                "description": "0,75 kg por semana. Exige más disciplina",
+                "emoji": "⚡"
+              }
+            ]
+          },
+          {
+            "id": "goal_pace_gain",
+            "type": "single_choice",
+            "visibleIf": {
+              "all": [
+                {
+                  "questionId": "goal_primary",
+                  "operator": "equals",
+                  "value": "gain_muscle"
+                }
+              ]
+            },
+            "prompt": [
+              "¿A qué ritmo quieres ganarlo?"
+            ],
+            "options": [
+              {
+                "id": "slow",
+                "title": "Tranquilo",
+                "description": "0,25 kg por semana. Menos grasa de propina",
+                "emoji": "🐢"
+              },
+              {
+                "id": "steady",
+                "title": "Constante",
+                "description": "0,5 kg por semana",
+                "emoji": "🚶"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nutrition",
+        "title": "Tu alimentación",
+        "subtitle": "Para que el plan sea comida que te comerías",
+        "questions": [
+          {
+            "id": "diet_type",
+            "type": "single_choice",
+            "prompt": [
+              "¿Sigues algún tipo de alimentación?"
+            ],
+            "options": [
+              {
+                "id": "balanced",
+                "title": "Como de todo",
+                "description": "Sin restricciones",
+                "emoji": "🍽️"
+              },
+              {
+                "id": "pescetarian",
+                "title": "Pescetariana",
+                "description": "Pescado sí, carne no",
+                "emoji": "🐟"
+              },
+              {
+                "id": "vegetarian",
+                "title": "Vegetariana",
+                "description": "Sin carne ni pescado",
+                "emoji": "🥬"
+              },
+              {
+                "id": "vegan",
+                "title": "Vegana",
+                "description": "Nada de origen animal",
+                "emoji": "🌱"
+              }
+            ]
+          },
+          {
+            "id": "has_allergies",
+            "type": "single_choice",
+            "prompt": [
+              "¿Tienes alguna alergia o intolerancia?"
+            ],
+            "options": [
+              {
+                "id": "yes",
+                "title": "Sí",
+                "emoji": "⚠️"
+              },
+              {
+                "id": "no",
+                "title": "No, ninguna",
+                "emoji": "👍"
+              }
+            ]
+          },
+          {
+            "id": "allergies",
+            "type": "multi_choice",
+            "visibleIf": {
+              "all": [
+                {
+                  "questionId": "has_allergies",
+                  "operator": "equals",
+                  "value": "yes"
+                }
+              ]
+            },
+            "prompt": [
+              "¿A qué?",
+              "Marca todas las que apliquen."
+            ],
+            "confirmLabel": "Confirmar",
+            "validation": {
+              "minSelections": 1
+            },
+            "options": [
+              {
+                "id": "gluten",
+                "title": "Gluten",
+                "emoji": "🌾"
+              },
+              {
+                "id": "lactose",
+                "title": "Lactosa",
+                "emoji": "🥛"
+              },
+              {
+                "id": "peanut",
+                "title": "Cacahuete",
+                "emoji": "🥜"
+              },
+              {
+                "id": "tree_nuts",
+                "title": "Frutos secos",
+                "description": "Almendra, nuez, anacardo…",
+                "emoji": "🌰"
+              },
+              {
+                "id": "fish",
+                "title": "Pescado",
+                "emoji": "🐟"
+              },
+              {
+                "id": "shellfish",
+                "title": "Marisco",
+                "emoji": "🦐"
+              },
+              {
+                "id": "soy",
+                "title": "Soja",
+                "emoji": "🫘"
+              },
+              {
+                "id": "egg",
+                "title": "Huevo",
+                "emoji": "🥚"
+              }
+            ],
+            "allowsCustom": {
+              "enabled": true,
+              "label": "Añadir otra",
+              "placeholder": "Ej. Sésamo",
+              "maxItems": 5,
+              "maxLength": 40
+            }
+          },
+          {
+            "id": "meal_count",
+            "type": "single_choice",
+            "visibleIf": {
+              "all": [
+                {
+                  "questionId": "wants_meal_plan",
+                  "operator": "equals",
+                  "value": "yes"
+                }
+              ]
+            },
+            "prompt": [
+              "¿Cuántas veces comes al día?"
+            ],
+            "options": [
+              {
+                "id": "two",
+                "title": "2 comidas",
+                "description": "Suelo saltarme una",
+                "emoji": "🍳"
+              },
+              {
+                "id": "three",
+                "title": "3 comidas",
+                "description": "Desayuno, comida y cena",
+                "emoji": "🍽️"
+              },
+              {
+                "id": "four_five",
+                "title": "4 o 5",
+                "description": "Con almuerzo y merienda",
+                "emoji": "🥪"
+              },
+              {
+                "id": "intermittent",
+                "title": "Ayuno intermitente",
+                "description": "Como en una ventana horaria",
+                "emoji": "⏱️"
+              }
+            ]
+          },
+          {
+            "id": "cooking_time",
+            "type": "single_choice",
+            "visibleIf": {
+              "all": [
+                {
+                  "questionId": "wants_meal_plan",
+                  "operator": "equals",
+                  "value": "yes"
+                }
+              ]
+            },
+            "prompt": [
+              "¿Cuánto tiempo tienes para cocinar entre semana?"
+            ],
+            "options": [
+              {
+                "id": "under_15",
+                "title": "Menos de 15 min",
+                "description": "Lo más rápido posible",
+                "emoji": "⚡"
+              },
+              {
+                "id": "15_30",
+                "title": "15 a 30 min",
+                "description": "Algo se puede hacer",
+                "emoji": "⏲️"
+              },
+              {
+                "id": "over_30",
+                "title": "Más de 30 min",
+                "description": "Me gusta cocinar",
+                "emoji": "👨‍🍳"
+              },
+              {
+                "id": "no_cooking",
+                "title": "Casi no cocino",
+                "description": "Como fuera o preparado",
+                "emoji": "🥡"
+              }
+            ]
+          },
+          {
+            "id": "extra_notes",
+            "type": "text",
+            "required": false,
+            "prompt": [
+              "¿Algo más que deba saber?",
+              "Opcional. Puedes saltarte esta pregunta."
+            ],
+            "text": {
+              "placeholder": "Ej. Entreno por la mañana en ayunas",
+              "multiline": true,
+              "maxLength": 280
+            },
+            "skipLabel": "Saltar"
+          }
+        ]
+      },
+      {
+        "id": "finish",
+        "title": "Listo",
+        "countsTowardProgress": false,
+        "questions": [
+          {
+            "id": "summary",
+            "type": "info",
+            "prompt": [
+              "¡Eso es todo! 🎉",
+              "Revisa tus respuestas si quieres cambiar algo, o dale a continuar y preparo tu plan."
+            ],
+            "continueLabel": "Crear mi plan"
+          }
+        ]
+      }
+    ]
+  }
+}

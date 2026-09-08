@@ -32,6 +32,15 @@
 		AFD565CF058B96641D981283 /* MultipartFormDataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7E731CABF62832858FE5D4B /* MultipartFormDataTests.swift */; };
 		7A529131E14FF96A9E825A5A /* AnalyzeMealResponseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 772B22BA65BD44EA5979237B /* AnalyzeMealResponseTests.swift */; };
 		9C4A8563AD271259B8AC77C0 /* RemoteCalorieServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CDBEBA4A0A623D4BD618C6 /* RemoteCalorieServiceTests.swift */; };
+		AD55DB417153CA3FD6BC576B /* OnboardingFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15BCFE6A6A59AEAAC3913E4E /* OnboardingFixtures.swift */; };
+		18AC78721FF07046C736E8B5 /* QuestionnaireFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 868B37ECA300B5818DE6C37A /* QuestionnaireFlowTests.swift */; };
+		44FFB7D2BAE936A0FB53DE1D /* MeasureConversionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D6CDC6835FEA5DC60B5374F /* MeasureConversionTests.swift */; };
+		258C01C85FBD333B8346C85D /* QuestionnaireDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2125C28AC57803CF143AB688 /* QuestionnaireDecodingTests.swift */; };
+		E29E301007D9C0F7337A2ECB /* DateTokenTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC48BB2F2525F21E57D08602 /* DateTokenTests.swift */; };
+		BE5493B7E190BFF780EB36D6 /* CustomValueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B61652EE886270FFA13A9E18 /* CustomValueTests.swift */; };
+		C7349CE2BF3EFD315FE5E89F /* OnboardingSubmissionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 859502DA46D1CC326D066176 /* OnboardingSubmissionTests.swift */; };
+		C797112628F45932476D431B /* BundledQuestionnaireTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30A38941F2BB3853204C045C /* BundledQuestionnaireTests.swift */; };
+		62C0E7F4E084E064F37F641A /* OnboardingStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7757CA206FD6DCE132613F0E /* OnboardingStoreTests.swift */; };
 		D70495C6EC9F3A16BF423771 /* RetryCooldownTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A1EE17F30B0D890888F9AB /* RetryCooldownTests.swift */; };
 		789955CB8BAAA5AE21E97DAE /* AnalysisPhotoEncoderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CA6674150C6953ED10E5BF6 /* AnalysisPhotoEncoderTests.swift */; };
 		722A0C6F90A6AF21B5AFEF8E /* BackendEnvironmentAuditTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6759D0A6CD495752F42503A /* BackendEnvironmentAuditTests.swift */; };
@@ -77,6 +86,15 @@
 		C7E731CABF62832858FE5D4B /* MultipartFormDataTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MultipartFormDataTests.swift; sourceTree = "<group>"; };
 		772B22BA65BD44EA5979237B /* AnalyzeMealResponseTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnalyzeMealResponseTests.swift; sourceTree = "<group>"; };
 		70CDBEBA4A0A623D4BD618C6 /* RemoteCalorieServiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RemoteCalorieServiceTests.swift; sourceTree = "<group>"; };
+		15BCFE6A6A59AEAAC3913E4E /* OnboardingFixtures.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnboardingFixtures.swift; sourceTree = "<group>"; };
+		868B37ECA300B5818DE6C37A /* QuestionnaireFlowTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QuestionnaireFlowTests.swift; sourceTree = "<group>"; };
+		0D6CDC6835FEA5DC60B5374F /* MeasureConversionTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MeasureConversionTests.swift; sourceTree = "<group>"; };
+		2125C28AC57803CF143AB688 /* QuestionnaireDecodingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QuestionnaireDecodingTests.swift; sourceTree = "<group>"; };
+		CC48BB2F2525F21E57D08602 /* DateTokenTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DateTokenTests.swift; sourceTree = "<group>"; };
+		B61652EE886270FFA13A9E18 /* CustomValueTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CustomValueTests.swift; sourceTree = "<group>"; };
+		859502DA46D1CC326D066176 /* OnboardingSubmissionTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnboardingSubmissionTests.swift; sourceTree = "<group>"; };
+		30A38941F2BB3853204C045C /* BundledQuestionnaireTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BundledQuestionnaireTests.swift; sourceTree = "<group>"; };
+		7757CA206FD6DCE132613F0E /* OnboardingStoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnboardingStoreTests.swift; sourceTree = "<group>"; };
 		42A1EE17F30B0D890888F9AB /* RetryCooldownTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RetryCooldownTests.swift; sourceTree = "<group>"; };
 		3CA6674150C6953ED10E5BF6 /* AnalysisPhotoEncoderTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnalysisPhotoEncoderTests.swift; sourceTree = "<group>"; };
 		D6759D0A6CD495752F42503A /* BackendEnvironmentAuditTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BackendEnvironmentAuditTests.swift; sourceTree = "<group>"; };
@@ -136,6 +154,15 @@
 				C7E731CABF62832858FE5D4B /* MultipartFormDataTests.swift */,
 				772B22BA65BD44EA5979237B /* AnalyzeMealResponseTests.swift */,
 				70CDBEBA4A0A623D4BD618C6 /* RemoteCalorieServiceTests.swift */,
+				15BCFE6A6A59AEAAC3913E4E /* OnboardingFixtures.swift */,
+				868B37ECA300B5818DE6C37A /* QuestionnaireFlowTests.swift */,
+				0D6CDC6835FEA5DC60B5374F /* MeasureConversionTests.swift */,
+				2125C28AC57803CF143AB688 /* QuestionnaireDecodingTests.swift */,
+				CC48BB2F2525F21E57D08602 /* DateTokenTests.swift */,
+				B61652EE886270FFA13A9E18 /* CustomValueTests.swift */,
+				859502DA46D1CC326D066176 /* OnboardingSubmissionTests.swift */,
+				30A38941F2BB3853204C045C /* BundledQuestionnaireTests.swift */,
+				7757CA206FD6DCE132613F0E /* OnboardingStoreTests.swift */,
 				42A1EE17F30B0D890888F9AB /* RetryCooldownTests.swift */,
 				3CA6674150C6953ED10E5BF6 /* AnalysisPhotoEncoderTests.swift */,
 				D6759D0A6CD495752F42503A /* BackendEnvironmentAuditTests.swift */,
@@ -289,6 +316,15 @@
 				A8C41FDC00DA567D180D1D9B /* RouterTests.swift in Sources */,
 				722A0C6F90A6AF21B5AFEF8E /* BackendEnvironmentAuditTests.swift in Sources */,
 				789955CB8BAAA5AE21E97DAE /* AnalysisPhotoEncoderTests.swift in Sources */,
+				AD55DB417153CA3FD6BC576B /* OnboardingFixtures.swift in Sources */,
+				18AC78721FF07046C736E8B5 /* QuestionnaireFlowTests.swift in Sources */,
+				44FFB7D2BAE936A0FB53DE1D /* MeasureConversionTests.swift in Sources */,
+				258C01C85FBD333B8346C85D /* QuestionnaireDecodingTests.swift in Sources */,
+				E29E301007D9C0F7337A2ECB /* DateTokenTests.swift in Sources */,
+				BE5493B7E190BFF780EB36D6 /* CustomValueTests.swift in Sources */,
+				C7349CE2BF3EFD315FE5E89F /* OnboardingSubmissionTests.swift in Sources */,
+				C797112628F45932476D431B /* BundledQuestionnaireTests.swift in Sources */,
+				62C0E7F4E084E064F37F641A /* OnboardingStoreTests.swift in Sources */,
 				D70495C6EC9F3A16BF423771 /* RetryCooldownTests.swift in Sources */,
 				9C4A8563AD271259B8AC77C0 /* RemoteCalorieServiceTests.swift in Sources */,
 				7A529131E14FF96A9E825A5A /* AnalyzeMealResponseTests.swift in Sources */,
