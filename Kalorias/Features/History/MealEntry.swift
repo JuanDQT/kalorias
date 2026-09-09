@@ -5,6 +5,20 @@
 //  SwiftData model for a saved meal. The photo is stored as a file on disk
 //  (referenced by `imageFileName`), not as a DB blob, so the list stays fast.
 //
+//  A MEAL BELONGS TO AN ACCOUNT (feature 010, FR-042). The rows never leave the
+//  device, but two people can sign in to the same installation over time, and
+//  the second must not see the first's food. Ownership is therefore a stored
+//  property and every read filters on it in the SwiftData predicate — not in
+//  Swift after fetching, which would load the other account's rows into memory
+//  to then hide them.
+//
+//  IT IS OPTIONAL, AND `nil` MEANS "NOBODY". Optionality buys a lightweight
+//  inferred migration of the existing store. It does **not** mean "the current
+//  user": rows written before accounts existed are shown to no one, because
+//  handing them to whoever signs in first is a guess, and the thing it would be
+//  guessing about is somebody's food diary. The constitution records that no
+//  pre-feature build was distributed, so those rows only exist in development.
+//
 
 import Foundation
 import SwiftData
@@ -23,6 +37,10 @@ final class MealEntry {
     private var foodsData: Data
     var imageFileName: String
 
+    /// The opaque Kalorias user this meal belongs to. Required for every new
+    /// insert; `nil` only on rows that predate accounts, which stay hidden.
+    var ownerUserID: String?
+
     /// The detected foods, encoded to/decoded from `foodsData`.
     var foods: [StoredFood] {
         get { (try? JSONDecoder().decode([StoredFood].self, from: foodsData)) ?? [] }
@@ -35,8 +53,10 @@ final class MealEntry {
         title: String,
         totalCalories: Int,
         foods: [StoredFood],
-        imageFileName: String
+        imageFileName: String,
+        ownerUserID: String? = nil
     ) {
+        self.ownerUserID = ownerUserID
         self.id = id
         self.capturedAt = capturedAt
         self.title = title

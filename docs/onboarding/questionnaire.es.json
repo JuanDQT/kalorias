@@ -1,7 +1,7 @@
 {
   "onboardingId": "plan_v1",
   "schemaVersion": 1,
-  "contentVersion": 4,
+  "contentVersion": 5,
   "locale": "es",
   "sections": [
     {
@@ -73,34 +73,6 @@
               "title": "No, solo quiero contar",
               "description": "Tú decides qué comer, yo llevo la cuenta",
               "emoji": "📊"
-            }
-          ]
-        },
-        {
-          "id": "motivation_level",
-          "stage": "onboarding",
-          "type": "single_choice",
-          "prompt": [
-            "¿Qué tan motivado te sientes ahora mismo?"
-          ],
-          "options": [
-            {
-              "id": "low",
-              "title": "Lo estoy intentando",
-              "description": "Necesito que me lo pongas fácil",
-              "emoji": "🙂"
-            },
-            {
-              "id": "medium",
-              "title": "Con ganas",
-              "description": "Voy a por ello",
-              "emoji": "😃"
-            },
-            {
-              "id": "high",
-              "title": "A tope",
-              "description": "Nada me va a parar",
-              "emoji": "🚀"
             }
           ]
         },

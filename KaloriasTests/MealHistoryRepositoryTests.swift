@@ -13,12 +13,20 @@ nonisolated final class MealHistoryRepositoryTests: XCTestCase {
     /// container alive for the duration of the test (the context is invalid
     /// once its container deallocates).
     @MainActor
-    private func makeRepository() throws -> (MealHistoryRepository, ModelContainer) {
+    private func makeRepository(
+        activeUserID: String? = "user-1"
+    ) throws -> (MealHistoryRepository, ModelContainer) {
         let container = try ModelContainer(
             for: MealEntry.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
-        return (MealHistoryRepository(context: container.mainContext), container)
+        return (
+            MealHistoryRepository(
+                context: container.mainContext,
+                activeUserID: activeUserID
+            ),
+            container
+        )
     }
 
     private func analysis(_ foods: [FoodItem]) -> CalorieAnalysis {
@@ -115,5 +123,66 @@ nonisolated final class MealHistoryRepositoryTests: XCTestCase {
         XCTAssertEqual(decoded[0].name, "Pollo")
         XCTAssertEqual(decoded[0].calories, 320)
         XCTAssertNil(decoded[0].region, "a payload with no region key decodes as nil")
+    }
+
+    // MARK: Account ownership (feature 010)
+
+    @MainActor
+    func testRecordWithoutAnActiveOwnerIsRejected() async throws {
+        let (repo, container) = try makeRepository(activeUserID: nil)
+
+        await repo.record(
+            image: nil,
+            analysis: analysis([FoodItem(name: "Hidden", calories: 100)]),
+            date: Date()
+        )
+
+        let allRows = try container.mainContext.fetch(FetchDescriptor<MealEntry>())
+        XCTAssertTrue(allRows.isEmpty, "a missing owner must not create an invisible row")
+    }
+
+    @MainActor
+    func testEntriesExposeOnlyTheActiveOwnerAndHideLegacyRows() throws {
+        let (repo, container) = try makeRepository(activeUserID: "user-1")
+        let context = container.mainContext
+        context.insert(makeEntry(title: "Mine", owner: "user-1"))
+        context.insert(makeEntry(title: "Theirs", owner: "user-2"))
+        context.insert(makeEntry(title: "Legacy", owner: nil))
+        try context.save()
+
+        XCTAssertEqual(repo.entries().map(\.title), ["Mine"])
+
+        repo.setActiveUser("user-2")
+        XCTAssertEqual(repo.entries().map(\.title), ["Theirs"])
+
+        repo.setActiveUser(nil)
+        XCTAssertTrue(repo.entries().isEmpty)
+    }
+
+    @MainActor
+    func testClearLocalDataRemovesOnlyTheSelectedOwner() async throws {
+        let (repo, container) = try makeRepository(activeUserID: "user-1")
+        let context = container.mainContext
+        context.insert(makeEntry(title: "Mine", owner: "user-1"))
+        context.insert(makeEntry(title: "Theirs", owner: "user-2"))
+        context.insert(makeEntry(title: "Legacy", owner: nil))
+        try context.save()
+
+        await repo.clearLocalData(ownedBy: "user-1")
+
+        let remaining = try context.fetch(FetchDescriptor<MealEntry>())
+        XCTAssertEqual(Set(remaining.map(\.title)), ["Theirs", "Legacy"])
+        XCTAssertNil(repo.activeUserID)
+    }
+
+    private func makeEntry(title: String, owner: String?) -> MealEntry {
+        MealEntry(
+            capturedAt: Date(timeIntervalSince1970: 1_000),
+            title: title,
+            totalCalories: 100,
+            foods: [StoredFood(name: title, calories: 100)],
+            imageFileName: "",
+            ownerUserID: owner
+        )
     }
 }

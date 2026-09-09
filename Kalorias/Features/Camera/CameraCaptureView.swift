@@ -14,6 +14,9 @@ import SwiftUI
 struct CameraCaptureView: View {
     @Environment(Router.self) private var router
     @Environment(MealHistoryRepository.self) private var history
+    /// The analysis route is authenticated since feature 010; the client comes
+    /// from the journey so it shares the one session actor.
+    @Environment(AppJourneyStore.self) private var journey
     @State private var store = CaptureSessionStore()
     @State private var analysisStore: CalorieAnalysisStore?
     @State private var pickedItem: PhotosPickerItem?
@@ -90,7 +93,7 @@ struct CameraCaptureView: View {
         analysisStore = CalorieAnalysisStore(
             imageData: data,
             image: image,
-            analyzer: RemoteCalorieService(),
+            analyzer: RemoteCalorieService(client: journey.makeAuthenticatedClient()),
             recorder: history
         )
     }

@@ -117,4 +117,123 @@ nonisolated final class BackendEnvironmentAuditTests: XCTestCase {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         return trimmed.hasPrefix("//") || trimmed.hasPrefix("*") || trimmed.hasPrefix("/*")
     }
+
+    // MARK: - One address, composed in one place (feature 010)
+
+    /// Every file that builds a request must take its address from
+    /// `BackendEnvironment`.
+    ///
+    /// The literal audit above catches a hardcoded host. This catches the other
+    /// half of the same mistake: a service that quietly grows a *second* source
+    /// of truth for where the backend is — a parameter with no default, an
+    /// injected string, a copy of the URL passed down from somewhere else. Four
+    /// services now send authenticated traffic, and a fifth pointing somewhere
+    /// else would be found in production, not in review.
+    func testEveryServiceThatBuildsARequestComposesItFromTheEnvironment() throws {
+        var offenders: [String] = []
+
+        for file in try Self.appSourceFiles() {
+            let contents = try String(contentsOf: file, encoding: .utf8)
+            guard contents.contains("URLRequest(url:") else { continue }
+            guard !contents.contains("BackendEnvironment.") else { continue }
+            offenders.append(file.lastPathComponent)
+        }
+
+        XCTAssertEqual(
+            offenders, [],
+            "these build requests without composing from the single validated base URL"
+        )
+    }
+
+    /// Endpoint paths are relative, always. A constant holding a whole URL would
+    /// pass the literal audit whenever the scheme sat in another file, and would
+    /// point one route at a host the rest of the app never validated.
+    func testEveryDeclaredEndpointPathIsRelative() throws {
+        let declaration = #/static let \w*[Pp]ath = "([^"]*)"/#
+        var offenders: [String] = []
+
+        for file in try Self.appSourceFiles() {
+            let contents = try String(contentsOf: file, encoding: .utf8)
+            for match in contents.matches(of: declaration) {
+                let path = String(match.1)
+                if !path.hasPrefix("/") || path.contains("://") {
+                    offenders.append("\(file.lastPathComponent): \(path)")
+                }
+            }
+        }
+
+        XCTAssertEqual(offenders, [], "an endpoint path must be appended to the base URL, not replace it")
+    }
+
+    // MARK: - The example configuration holds an address and nothing else
+
+    private static var exampleConfigURL: URL {
+        appSourceRoot
+            .deletingLastPathComponent()
+            .appending(path: "Config/Secrets.example.xcconfig")
+    }
+
+    /// Every assignment in the example config, as `(key, value)`.
+    private static func exampleSettings() throws -> [(key: String, value: String)] {
+        let contents = try String(contentsOf: exampleConfigURL, encoding: .utf8)
+        return contents.components(separatedBy: .newlines).compactMap { line in
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.hasPrefix("//"), let separator = trimmed.firstIndex(of: "=") else {
+                return nil
+            }
+            return (
+                String(trimmed[trimmed.startIndex..<separator]).trimmingCharacters(in: .whitespaces),
+                String(trimmed[trimmed.index(after: separator)...]).trimmingCharacters(in: .whitespaces)
+            )
+        }
+    }
+
+    func testTheAuditActuallyReadsTheExampleConfiguration() throws {
+        let settings = try Self.exampleSettings()
+
+        XCTAssertTrue(
+            settings.contains { $0.key == "KALORIAS_API_BASE_URL" },
+            "expected the example config at \(Self.exampleConfigURL.path(percentEncoded: false))"
+        )
+    }
+
+    /// The app holds an address. It does not hold a credential, and adding
+    /// Apple to the feature is exactly the moment someone reaches for a client
+    /// secret or a team key — both of which belong to the backend, which is the
+    /// only party that can verify an Apple identity token at all.
+    func testTheExampleConfigurationDeclaresNoCredential() throws {
+        let forbidden = ["KEY", "SECRET", "TOKEN", "PASSWORD", "CREDENTIAL", "PRIVATE", "TEAM_ID"]
+        var offenders: [String] = []
+
+        for setting in try Self.exampleSettings() {
+            let name = setting.key.uppercased()
+            for term in forbidden where name.contains(term) {
+                offenders.append(setting.key)
+            }
+        }
+
+        XCTAssertEqual(offenders, [], "a credential in the app is a credential on every device")
+    }
+
+    /// And it holds no endpoint path either: routes live next to the code that
+    /// calls them, so a deployment cannot silently repoint one of them.
+    func testTheExampleConfigurationDeclaresNoEndpointPath() throws {
+        var offenders: [String] = []
+
+        for setting in try Self.exampleSettings() {
+            let value = setting.value.replacingOccurrences(of: "$(SLASH)", with: "/")
+            if value.contains("/api/") {
+                offenders.append("\(setting.key) = \(setting.value)")
+            }
+            guard setting.key.contains("API_BASE_URL"),
+                  !setting.value.contains("$(CONFIGURATION)"),
+                  let url = URL(string: value)
+            else { continue }
+            if !url.path().isEmpty, url.path() != "/" {
+                offenders.append("\(setting.key) carries the path \(url.path())")
+            }
+        }
+
+        XCTAssertEqual(offenders, [], "the config says where the backend is, not what to ask it")
+    }
 }

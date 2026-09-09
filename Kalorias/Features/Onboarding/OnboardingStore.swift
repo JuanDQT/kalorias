@@ -3,8 +3,14 @@
 //  Kalorias
 //
 //  Owns the onboarding chat: loads the questionnaire, holds the flow, saves a
-//  draft after every answer and submits once at the end (Principle V — no view
-//  touches the network).
+//  draft after every answer, and seals the finished result **on this device**
+//  (Principle V — no view touches the network).
+//
+//  IT NO LONGER SUBMITS ANYTHING. Feature 010 moved that boundary: the last
+//  answer produces a sealed `PendingOnboarding` on disk and nothing else. The
+//  upload happens later, once Sign in with Apple has committed an account and
+//  the user has separately agreed to their health data being processed. Until
+//  both of those are true, not one answer leaves the phone (FR-003).
 //
 //  THE QUESTIONNAIRE IS LOADED ONCE AND DOES NOT CHANGE MID-SESSION. Someone who
 //  started on `contentVersion` 3 finishes on 3, even if the server is already
@@ -24,9 +30,19 @@
 //  address that is not up sits on a blank spinner for the full request timeout,
 //  which is the app's whole first impression.
 //
-//  SUBMITTING IS THE ONLY STEP THAT CAN BE RETRIED, and it retries under the
-//  same `sessionId` — created once, when the flow starts — so the server sees a
-//  repeat rather than a second person.
+//  THE NEXT QUESTION WAITS FOR THE DISK. An answer is shown as accepted only
+//  after its draft write returns (FR-002). Advancing first and saving after
+//  makes the most recent answer — the one the user is thinking about — the one
+//  always at risk, and a storage failure would then be invisible.
+//
+//  A STORAGE FAILURE IS NOT A NETWORK FAILURE, and the user is told which. "We
+//  couldn't save that on this device" and "we couldn't reach Kalorias" call for
+//  completely different actions, and merging them into one message is how
+//  someone spends five minutes toggling airplane mode at a full disk.
+//
+//  THE SESSION ID IS CREATED ONCE, when the flow starts, and survives resume,
+//  review edits and every later retry — it is the idempotency key the server
+//  uses to tell a resend from a second person (FR-031).
 //
 
 import Observation
@@ -40,14 +56,27 @@ final class OnboardingStore {
         case loading
         /// The chat is running.
         case asking
-        case submitting
+        /// The finished answers are being written to protected storage.
+        case sealing
+        /// Sealed locally. The journey moves on to access from here.
         case finished
-        /// Nothing could be loaded, or the submission gave up.
+        /// Nothing could be loaded.
         case failed(OnboardingError)
+    }
+
+    /// A write that did not land. Shown in place, without advancing.
+    nonisolated enum StorageFailure: Equatable, Sendable {
+        /// The answer could not be saved. The question stays open.
+        case answer
+        /// The finished payload could not be sealed. Access is not shown.
+        case seal
     }
 
     private(set) var state: State = .loading
     private(set) var flow: QuestionnaireFlow?
+
+    /// The last write that failed, if any. Cleared by the next successful one.
+    private(set) var storageFailure: StorageFailure?
 
     /// The question whose answer the user tapped to change. While set, its input
     /// is reopened in place with the current value loaded.
@@ -64,11 +93,16 @@ final class OnboardingStore {
         let answer: OnboardingAnswer
     }
 
-    private let service: any OnboardingProviding
+    private let service: any OnboardingFetching
     private let storage: OnboardingStorage
+    private let pendingStorage: PendingOnboardingStorage
     private let languageCode: String
     private let firstPaintDeadline: Duration
     private let now: () -> Date
+
+    /// Called once, with the sealed payload, after it is durably on disk. The
+    /// journey store uses this to leave onboarding for access.
+    private let onSealed: (PendingOnboarding) -> Void
 
     /// How long the first paint waits for the server before opening on the
     /// copy already on the device.
@@ -78,17 +112,21 @@ final class OnboardingStore {
     private var startedAt: Date
 
     init(
-        service: any OnboardingProviding = RemoteOnboardingService(),
+        service: any OnboardingFetching = RemoteOnboardingService(),
         storage: OnboardingStorage = OnboardingStorage(),
+        pendingStorage: PendingOnboardingStorage = PendingOnboardingStorage(),
         languageCode: String = Locale.current.language.languageCode?.identifier ?? "es",
         firstPaintDeadline: Duration = OnboardingStore.defaultFirstPaintDeadline,
-        now: @escaping () -> Date = Date.init
+        now: @escaping () -> Date = Date.init,
+        onSealed: @escaping (PendingOnboarding) -> Void = { _ in }
     ) {
         self.service = service
         self.storage = storage
+        self.pendingStorage = pendingStorage
         self.languageCode = languageCode
         self.firstPaintDeadline = firstPaintDeadline
         self.now = now
+        self.onSealed = onSealed
         self.startedAt = now()
     }
 
@@ -99,15 +137,15 @@ final class OnboardingStore {
 
         if let fetched = await fetchWithinDeadline() {
             storage.cacheQuestionnaire(fetched.payload)
-            begin(with: fetched.questionnaire)
+            await begin(with: fetched.questionnaire)
             return
         }
         if let cached = storage.cachedQuestionnaire() {
-            begin(with: cached)
+            await begin(with: cached)
             return
         }
         if let bundled = storage.bundledQuestionnaire(languageCode: languageCode) {
-            begin(with: bundled)
+            await begin(with: bundled)
             return
         }
         state = .failed(.serviceError)
@@ -140,8 +178,12 @@ final class OnboardingStore {
     }
 
     /// Start the flow, resuming a draft when one belongs to this questionnaire.
-    private func begin(with questionnaire: Questionnaire) {
-        if let draft = storage.draft(matching: questionnaire) {
+    ///
+    /// A draft that cannot be read — a locked device, damaged bytes — starts a
+    /// fresh flow rather than throwing the user out: they can still answer, and
+    /// the alternative is a first launch that shows an error and nothing else.
+    private func begin(with questionnaire: Questionnaire) async {
+        if let draft = try? await storage.draft(matching: questionnaire) {
             sessionId = draft.sessionId
             startedAt = draft.startedAt
             flow = QuestionnaireFlow(
@@ -155,10 +197,21 @@ final class OnboardingStore {
         state = .asking
     }
 
+    /// Resume the questionnaire that produced an existing sealed payload, so
+    /// "Review answers" on the access screen reopens the same session rather
+    /// than starting a second one (FR-007).
+    func resume(sessionId: UUID, startedAt: Date) {
+        self.sessionId = sessionId
+        self.startedAt = startedAt
+    }
+
     // MARK: Answering
 
     /// Record an answer, unless a cross-check disagrees with it first.
-    func answer(_ answer: OnboardingAnswer, for questionId: String) {
+    ///
+    /// The draft is written before the new flow is published, so the thread
+    /// never shows a question the disk does not know was answered.
+    func answer(_ answer: OnboardingAnswer, for questionId: String) async {
         guard var flow, let question = flow.questionnaire.question(id: questionId) else { return }
 
         if let value = answer.comparableValue,
@@ -168,26 +221,22 @@ final class OnboardingStore {
         }
 
         flow.answer(answer, for: questionId)
-        self.flow = flow
-        editingQuestionId = nil
-        persist()
+        await commit(flow)
     }
 
     /// Take the pending answer as given, warning and all.
-    func acceptWarning() {
+    func acceptWarning() async {
         guard let warning, var flow else { return }
         flow.answer(warning.answer, for: warning.questionId)
-        self.flow = flow
         self.warning = nil
-        editingQuestionId = nil
-        persist()
+        await commit(flow)
     }
 
     /// Go back to the question the warning says the answer contradicts.
-    func reviewWarning() {
+    func reviewWarning() async {
         guard let warning else { return }
         self.warning = nil
-        reopen(warning.check.compareTo)
+        await reopen(warning.check.compareTo)
     }
 
     /// Reopen an earlier question for editing.
@@ -195,58 +244,76 @@ final class OnboardingStore {
     /// Only that question's answer is dropped. What comes after survives until
     /// the *new* answer arrives, and then only what it invalidates is pruned —
     /// see `QuestionnaireFlow`.
-    func reopen(_ questionId: String) {
+    func reopen(_ questionId: String) async {
         guard var flow else { return }
         flow.reopen(questionId)
+        await commit(flow, editing: questionId)
+    }
+
+    /// Persist `flow`, and publish it only if that succeeded.
+    private func commit(_ flow: QuestionnaireFlow, editing questionId: String? = nil) async {
+        do {
+            try await storage.save(
+                OnboardingDraft(
+                    sessionId: sessionId,
+                    onboardingId: flow.questionnaire.onboardingId,
+                    contentVersion: flow.questionnaire.contentVersion,
+                    locale: flow.questionnaire.locale,
+                    startedAt: startedAt,
+                    updatedAt: now(),
+                    answers: flow.answers,
+                    shadowed: flow.shadowed
+                )
+            )
+        } catch {
+            // The question stays exactly where it was. Publishing the new flow
+            // here would show an answer as accepted that nothing has recorded.
+            storageFailure = .answer
+            return
+        }
+
+        storageFailure = nil
         self.flow = flow
         editingQuestionId = questionId
-        persist()
     }
 
-    private func persist() {
-        guard let flow else { return }
-        storage.save(
-            OnboardingDraft(
-                sessionId: sessionId,
-                onboardingId: flow.questionnaire.onboardingId,
-                contentVersion: flow.questionnaire.contentVersion,
-                startedAt: startedAt,
-                answers: flow.answers,
-                shadowed: flow.shadowed
-            )
-        )
+    /// Dismiss the inline storage message so the user can try the same answer
+    /// again — for instance after freeing space.
+    func dismissStorageFailure() {
+        storageFailure = nil
     }
 
-    // MARK: Submitting
+    // MARK: Sealing
 
-    var canSubmit: Bool { flow?.isComplete == true }
+    var canFinish: Bool { flow?.isComplete == true }
 
-    func submit() async {
-        guard let flow, flow.isComplete else { return }
-        state = .submitting
-
-        let submission = OnboardingSubmission(
-            sessionId: sessionId,
-            onboardingId: flow.questionnaire.onboardingId,
-            schemaVersion: flow.questionnaire.schemaVersion,
-            contentVersion: flow.questionnaire.contentVersion,
-            locale: flow.questionnaire.locale,
-            startedAt: startedAt,
-            completedAt: now(),
-            answers: flow.submissionEntries()
-        )
+    /// Seal the finished answers into protected local storage.
+    ///
+    /// This is the end of the onboarding's responsibility. It makes no request,
+    /// and `onSealed` runs only after the write returns — so the access screen
+    /// can never appear with nothing behind it.
+    func finish() async {
+        guard let flow, flow.isComplete, state != .sealing else { return }
+        state = .sealing
 
         do {
-            try await service.submit(submission)
-            // The draft has served its purpose; the shadow store goes with it.
-            storage.clearDraft()
+            let pending = try PendingOnboarding.seal(
+                flow: flow,
+                sessionId: sessionId,
+                startedAt: startedAt,
+                completedAt: now()
+            )
+            try await pendingStorage.save(pending)
+            storageFailure = nil
             state = .finished
+            onSealed(pending)
         } catch {
-            state = .failed(.from(error))
+            storageFailure = .seal
+            state = .asking
         }
     }
 
-    /// Return to the chat after a failed submission, with every answer intact.
+    /// Return to the chat after a load failure, with every answer intact.
     func dismissFailure() {
         guard case .failed = state, flow != nil else { return }
         state = .asking

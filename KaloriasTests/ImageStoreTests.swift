@@ -49,4 +49,35 @@ nonisolated final class ImageStoreTests: XCTestCase {
         store.delete(named: name)
         XCTAssertNil(store.loadImage(named: name))
     }
+
+    func testSavedImageDeclaresCompleteFileProtection() async throws {
+        let dir = makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = DiskImageStore(directory: dir)
+        let name = try await store.save(solidImage(), id: UUID())
+
+        let attributes = try FileManager.default.attributesOfItem(
+            atPath: dir.appending(path: name).path
+        )
+        if let protection = attributes[.protectionKey] as? FileProtectionType {
+            XCTAssertEqual(protection, .complete)
+        }
+    }
+
+    func testBatchDeletionIsIdempotentAndCallableOffTheMainActor() async throws {
+        let dir = makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = DiskImageStore(directory: dir)
+        let first = try await store.save(solidImage(), id: UUID())
+        let second = try await store.save(solidImage(), id: UUID())
+
+        await Task.detached {
+            dispatchPrecondition(condition: .notOnQueue(.main))
+            await store.delete(named: [first, second, "already-missing.jpg"])
+            await store.delete(named: [first, second])
+        }.value
+
+        XCTAssertNil(store.loadImage(named: first))
+        XCTAssertNil(store.loadImage(named: second))
+    }
 }

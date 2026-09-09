@@ -48,6 +48,17 @@ nonisolated enum AnalysisError: Error, Equatable {
     /// Map a low-level error (e.g. from URLSession) to an analysis error.
     static func from(_ error: any Error) -> AnalysisError {
         if let analysis = error as? AnalysisError { return analysis }
+        // Feature 010: the route is authenticated, so a dead session can now
+        // surface here. It is mapped by *kind*, not lumped into `serviceError`:
+        // losing connectivity and losing a session look identical to a user
+        // otherwise, and only one of them is fixed by waiting.
+        if let auth = error as? AuthError {
+            switch auth {
+            case .noConnection: return .noConnection
+            case .timeout: return .timeout
+            default: return .serviceError
+            }
+        }
         if let urlError = error as? URLError {
             switch urlError.code {
             case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed:

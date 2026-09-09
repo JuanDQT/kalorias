@@ -61,9 +61,26 @@ nonisolated enum BackendEnvironment {
     /// Whether this build has a usable backend address.
     static var isConfigured: Bool { analysisBaseURL != nil }
 
+    /// The Info-dictionary key the published privacy policy arrives under, fed
+    /// by `KALORIAS_PRIVACY_POLICY_URL` in `Config/Secrets.xcconfig`.
+    ///
+    /// It lives here for the same reason the API address does: the constitution
+    /// allows exactly one place to decide *where* the app points, and the
+    /// grep-able audit that enforces it does not — and should not — try to tell
+    /// an API host from a policy host. It is a public document, not a
+    /// credential, and the app only ever opens it (feature 010).
+    static let privacyPolicyURLInfoDictionaryKey = "KaloriasPrivacyPolicyURL"
+
+    /// The privacy notice's external link, or `nil` when this build has none —
+    /// in which case the notice simply shows its own text without the link.
+    static var privacyPolicyURL: URL? { baseURL(readingFrom: infoDictionaryLookup, key: privacyPolicyURLInfoDictionaryKey) }
+
     /// The parsing rules, over an injectable lookup so they are testable.
-    static func baseURL(readingFrom lookup: (String) -> String?) -> URL? {
-        guard let raw = lookup(baseURLInfoDictionaryKey) else { return nil }
+    static func baseURL(
+        readingFrom lookup: (String) -> String?,
+        key: String = BackendEnvironment.baseURLInfoDictionaryKey
+    ) -> URL? {
+        guard let raw = lookup(key) else { return nil }
 
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }

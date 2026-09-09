@@ -7,9 +7,9 @@
 //  AI-provider call behind the **unchanged** protocol, which is why the store,
 //  the views and persistence carried on untouched.
 //
-//  IT SENDS A PHOTO AND NOTHING ELSE. No prompt, no response schema, no token
-//  ceiling, and NO AUTHORIZATION HEADER — the server owns all of it, and sending
-//  a credential here would be a defect rather than a precaution (FR-004).
+//  IT SENDS A PHOTO THROUGH THE AUTHENTICATED CLIENT. No prompt, no response
+//  schema, and no provider credential leave the backend. The Kalorias bearer is
+//  attached centrally, refreshed once when needed, and never handled here.
 //
 //  TIMEOUTS ARE TWO NUMBERS, NOT ONE. `timeoutIntervalForRequest` is an
 //  *inactivity* timer that resets on every byte received, so on its own it lets
@@ -44,12 +44,23 @@ nonisolated struct RemoteCalorieService: CalorieAnalyzing {
     let baseURL: URL?
     let session: URLSession
 
+    /// Present since feature 010: the route now requires a Kalorias bearer
+    /// (FR-047), and the token, its refresh and the single safe replay are
+    /// decided by the shared client rather than restated here.
+    ///
+    /// Optional only so the existing session-configuration tests can build the
+    /// service without an auth stack; a build with no client makes no
+    /// authenticated request, it fails the analysis.
+    let client: AuthenticatedHTTPClient?
+
     init(
         baseURL: URL? = BackendEnvironment.analysisBaseURL,
-        session: URLSession = Self.makeSession()
+        session: URLSession = Self.makeSession(),
+        client: AuthenticatedHTTPClient? = nil
     ) {
         self.baseURL = baseURL
         self.session = session
+        self.client = client
     }
 
     /// The analysis session. Exposed so a test can assert the three properties
@@ -79,13 +90,22 @@ nonisolated struct RemoteCalorieService: CalorieAnalyzing {
             throw AnalysisError.serviceError
         }
 
+        guard let client else {
+            AnalysisLog.failure(outcome: "notConfigured", duration: 0, status: nil, requestId: nil)
+            throw AnalysisError.serviceError
+        }
+
         let request = makeRequest(baseURL: baseURL, imageData: imageData)
         let startedAt = Date()
 
         let data: Data
-        let response: URLResponse
+        let http: HTTPURLResponse
         do {
-            (data, response) = try await session.data(for: request)
+            // Replay is safe here **because the server authenticates first**: a
+            // `401` means the photo was never read, stored or sent to a model,
+            // so sending it again costs one upload and no duplicate work
+            // (contract, `analyzeMeal`).
+            (data, http) = try await client.send(request, allowsReplay: true)
         } catch {
             let mapped = AnalysisError.from(error)
             AnalysisLog.failure(
@@ -98,11 +118,6 @@ nonisolated struct RemoteCalorieService: CalorieAnalyzing {
         }
 
         let duration = Date().timeIntervalSince(startedAt)
-
-        guard let http = response as? HTTPURLResponse else {
-            AnalysisLog.failure(outcome: "serviceError", duration: duration, status: nil, requestId: nil)
-            throw AnalysisError.serviceError
-        }
 
         let requestId = http.value(forHTTPHeaderField: "X-Request-Id")
 

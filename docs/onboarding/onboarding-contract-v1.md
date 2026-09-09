@@ -421,11 +421,18 @@ justo el que el usuario va a seguir. Acortar el cuestionario no es razón sufici
 Queda entonces una asimetría deliberada: se difiere lo que sólo afecta al gusto y se pregunta
 todo lo que afecta al número.
 
-### `motivation_level` se queda, sabiendo lo que es
+### `motivation_level` se retiró en la `contentVersion` 5
 
-No alimenta ningún cálculo. Es un gesto de compromiso, y sí sube la tasa de finalización.
-Conviene tenerlo escrito para que nadie lo busque en la fórmula, y es la primera candidata a caer
-si hace falta acortar.
+Estaba dentro, con este documento diciendo que se quedaba «sabiendo lo que es»: no alimenta ningún
+cálculo, es un gesto de compromiso, y era **la primera candidata a caer si hacía falta acortar**.
+
+Se retiró justo antes del primer despliegue, así que **ningún usuario llegó a contestarla**. La
+versión 4 queda archivada en el servidor por el procedimiento normal, aunque en este caso no
+protege ninguna respuesta guardada: no hay ninguna.
+
+Lo que este cambio demuestra, y merece la pena anotarlo, es que el diseño hace lo que prometía.
+Quitar una pregunta fueron **dos JSON editados y un número subido**. Cero código de servidor, cero
+código de app, cero migraciones y cero releases.
 
 ### `sex: "unspecified"` — decisión cerrada
 
@@ -444,15 +451,17 @@ no puede distinguir una decisión de un olvido.
 
 | Perfil de usuario | Preguntas | Burbujas info |
 |---|---|---|
-| Perder peso, quiere plan, con alergias y condiciones | 20 | 3 |
-| Mantener peso, sin plan, sin alergias ni condiciones | 14 | 2 |
+| Perder peso, quiere plan, con alergias y condiciones | 19 | 3 |
+| Mantener peso, sin plan, sin alergias ni condiciones | 13 | 2 |
+
+*(Una menos que en la v4 en los dos perfiles, desde que se retiró `motivation_level`.)*
 
 Las seis de diferencia son `weight_goal`, `goal_pace_loss`, `allergies`, `health_conditions`,
 `meal_count` y `cooking_time`. El abandono se concentra a partir de la décima: catorce es
 razonable, veinte es largo, y son las condicionales las que hacen que sólo llegue a veinte quien
 de verdad tiene algo que contar. Si hay que
-recortar más, el orden es `motivation_level`, `calorie_experience` (sirve para el tono de la
-interfaz, no para el cálculo) y `extra_notes`.
+recortar más, el orden es `calorie_experience` (sirve para el tono de la interfaz, no para el
+cálculo) y `extra_notes`. `motivation_level`, que encabezaba esta lista, ya se retiró.
 
 ### Los permisos de notificaciones no van aquí
 

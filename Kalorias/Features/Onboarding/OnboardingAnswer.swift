@@ -117,7 +117,7 @@ nonisolated struct MeasureAnswer: Codable, Equatable, Sendable {
 
 /// The body of `POST /api/v1/kalorias/onboarding`. One request at the end, not
 /// one per answer.
-nonisolated struct OnboardingSubmission: Encodable, Sendable {
+nonisolated struct OnboardingSubmission: Codable, Equatable, Sendable {
     /// Client-generated, reused across retries so a resend after a timeout does
     /// not create a second plan. Also travels as `Idempotency-Key`.
     let sessionId: UUID
@@ -132,7 +132,7 @@ nonisolated struct OnboardingSubmission: Encodable, Sendable {
     /// One answer, flattened into the shape the contract documents. The `type`
     /// rides along so the server can read an entry without looking the question
     /// up first.
-    nonisolated struct Entry: Encodable, Sendable {
+    nonisolated struct Entry: Codable, Equatable, Sendable {
         let questionId: String
         let type: QuestionType
         let answer: OnboardingAnswer
@@ -171,14 +171,108 @@ nonisolated struct OnboardingSubmission: Encodable, Sendable {
                 try c.encode(true, forKey: .skipped)
             }
         }
+
+        init(questionId: String, type: QuestionType, answer: OnboardingAnswer) {
+            self.questionId = questionId
+            self.type = type
+            self.answer = answer
+        }
+
+        /// The mirror of `encode(to:)`, added by feature 010.
+        ///
+        /// IT EXISTS SO A SEALED SUBMISSION CAN COME BACK OFF DISK UNCHANGED.
+        /// The pending payload now waits on the device through Apple sign-in,
+        /// consent and any number of relaunches before it is sent, and every
+        /// retry must present the *same* body under the same idempotency key
+        /// (FR-031). Re-deriving it from the draft on each launch would let a
+        /// questionnaire update quietly change what the key stands for; reading
+        /// back exactly what was written cannot.
+        ///
+        /// `acknowledged` and `skipped` are checked before `type`, because both
+        /// can stand in for any question's answer.
+        init(from decoder: any Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            questionId = try c.decode(String.self, forKey: .questionId)
+
+            let rawType = try c.decode(String.self, forKey: .type)
+            guard let type = QuestionType(rawValue: rawType) else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .type,
+                    in: c,
+                    debugDescription: "Unknown question type."
+                )
+            }
+            self.type = type
+
+            if try c.decodeIfPresent(Bool.self, forKey: .acknowledged) == true {
+                answer = .acknowledged
+                return
+            }
+            if try c.decodeIfPresent(Bool.self, forKey: .skipped) == true {
+                answer = .skipped
+                return
+            }
+
+            switch type {
+            case .info:
+                answer = .acknowledged
+            case .singleChoice:
+                answer = .single(optionId: try c.decode(String.self, forKey: .optionId))
+            case .multiChoice:
+                answer = .multi(
+                    optionIds: try c.decode([String].self, forKey: .optionIds),
+                    customValues: try c.decodeIfPresent([String].self, forKey: .customValues) ?? []
+                )
+            case .text:
+                answer = .text(try c.decode(String.self, forKey: .value))
+            case .number:
+                answer = .number(try c.decode(Double.self, forKey: .value))
+            case .date:
+                let raw = try c.decode(String.self, forKey: .value)
+                let parts = raw.split(separator: "-").compactMap { Int($0) }
+                guard parts.count == 3 else {
+                    throw DecodingError.dataCorruptedError(
+                        forKey: .value,
+                        in: c,
+                        debugDescription: "Expected a yyyy-MM-dd date."
+                    )
+                }
+                answer = .date(year: parts[0], month: parts[1], day: parts[2])
+            case .measure:
+                answer = .measure(
+                    MeasureAnswer(
+                        canonical: try c.decode(Double.self, forKey: .value),
+                        unit: try c.decode(String.self, forKey: .unit),
+                        displayUnit: try c.decode(String.self, forKey: .displayUnit),
+                        displayComponents: try c.decode([String: Double].self, forKey: .displayComponents)
+                    )
+                )
+            }
+        }
     }
 
     /// The encoder the submission is sent with. ISO-8601 timestamps, because
     /// `Date`'s default encoding is seconds since 2001 and nothing on the other
     /// side would guess that.
+    ///
+    /// `.sortedKeys` is what makes the body *canonical*, and the idempotency
+    /// contract is stated in those terms: same key plus an identical body
+    /// returns the original result, a different body returns a conflict.
+    /// Without it `JSONEncoder` emits keys in the hash order of its backing
+    /// storage, so two encodes of the same payload differ — and a retry after a
+    /// lost response, which is the entire reason the key exists, is rejected as
+    /// `idempotency_payload_mismatch` by a server that hashes the bytes.
     static func makeEncoder() -> JSONEncoder {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = .sortedKeys
         return encoder
+    }
+
+    /// Its exact counterpart, for reading a sealed submission back off disk.
+    static func makeDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
     }
 }

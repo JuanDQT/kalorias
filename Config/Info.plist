@@ -22,6 +22,8 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>KaloriasAPIBaseURL</key>
 	<string>$(KALORIAS_API_BASE_URL)</string>
+	<key>KaloriasPrivacyPolicyURL</key>
+	<string>$(KALORIAS_PRIVACY_POLICY_URL)</string>
 	<key>LSApplicationCategoryType</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>

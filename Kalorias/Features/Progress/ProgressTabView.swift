@@ -19,13 +19,35 @@ import SwiftData
 import SwiftUI
 
 struct ProgressTabView: View {
-    @Query(sort: \MealEntry.capturedAt, order: .reverse) private var entries: [MealEntry]
+    /// Only the signed-in account's meals, filtered in the SwiftData predicate
+    /// rather than after the fetch (feature 010, FR-042): two people can use the
+    /// same phone over time, and the second must never load — let alone see —
+    /// the first's food. Rows with no owner predate accounts and belong to
+    /// nobody, so they are hidden too.
+    @Environment(Router.self) private var router
+
+    @Query private var entries: [MealEntry]
+
+    init(ownerUserID: String? = nil) {
+        // A sentinel rather than an optional comparison inside the predicate:
+        // no account can own the empty string, because a session with an empty
+        // user id is rejected before it is ever stored. So "no active account"
+        // and "rows that belong to nobody" both correctly match nothing.
+        let owner = ownerUserID ?? ""
+        _entries = Query(
+            filter: #Predicate<MealEntry> { $0.ownerUserID == owner },
+            sort: \MealEntry.capturedAt,
+            order: .reverse
+        )
+    }
 
     /// How many days the calorie chart covers.
     private let chartDayCount = 7
 
     var body: some View {
-        NavigationStack {
+        @Bindable var router = router
+
+        return NavigationStack(path: $router.progressPath) {
             Group {
                 if entries.isEmpty {
                     emptyState
@@ -34,6 +56,26 @@ struct ProgressTabView: View {
                 }
             }
             .navigationTitle("progress.title")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        router.openAccount()
+                    } label: {
+                        Label {
+                            Text("account.title")
+                        } icon: {
+                            Image(systemName: "person.crop.circle")
+                        }
+                    }
+                    .accessibilityIdentifier("progress.accountButton")
+                }
+            }
+            .navigationDestination(for: ProgressRoute.self) { route in
+                switch route {
+                case .account:
+                    AccountSettingsView()
+                }
+            }
         }
         .accessibilityIdentifier("screen.progress")
     }

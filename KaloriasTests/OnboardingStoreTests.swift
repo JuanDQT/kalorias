@@ -3,11 +3,16 @@
 //  KaloriasTests
 //
 //  The store's three jobs: getting a questionnaire from somewhere, keeping a
-//  draft, and submitting once.
+//  draft, and sealing the finished answers **on this device**.
 //
 //  THE FALLBACK CHAIN IS THE POINT. A failed fetch is not a failed onboarding —
 //  the cached copy is tried, then the bundled one, and only then does the user
 //  see an error. Getting this wrong means a first launch on a train.
+//
+//  IT NO LONGER SUBMITS, AND THAT IS ASSERTED, NOT ASSUMED (feature 010). The
+//  stub service below has no `submit` at all — the store holds only the fetching
+//  half of the boundary, so a test cannot accidentally prove "it did not upload"
+//  against a type that could have.
 //
 
 import XCTest
@@ -15,26 +20,23 @@ import XCTest
 
 // MARK: - Stubs
 
-private nonisolated final class StubService: OnboardingProviding, @unchecked Sendable {
+private nonisolated final class StubService: OnboardingFetching, @unchecked Sendable {
     var questionnaire: Questionnaire?
     /// The bytes the fetch reports having received, which is what gets cached.
     var payload = Data("{}".utf8)
     var fetchError: (any Error)?
-    var submitError: (any Error)?
     /// How long the fetch takes to answer, for the first-paint deadline.
     var fetchDelay: Duration = .zero
-    private(set) var submissions: [OnboardingSubmission] = []
+    /// Every language the fetch was asked for, so a test can assert what the
+    /// public request carried — and, by its absence, what it did not.
+    private(set) var fetchedLanguages: [String] = []
 
     func fetchQuestionnaire(languageCode: String) async throws -> FetchedQuestionnaire {
+        fetchedLanguages.append(languageCode)
         if fetchDelay > .zero { try await Task.sleep(for: fetchDelay) }
         if let fetchError { throw fetchError }
         guard let questionnaire else { throw OnboardingError.serviceError }
         return FetchedQuestionnaire(questionnaire: questionnaire, payload: payload)
-    }
-
-    func submit(_ submission: OnboardingSubmission) async throws {
-        submissions.append(submission)
-        if let submitError { throw submitError }
     }
 }
 
@@ -47,24 +49,44 @@ nonisolated final class OnboardingStoreTests: XCTestCase {
     override func setUp() async throws {
         directory = URL.temporaryDirectory.appending(path: UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        seals = SealBox()
     }
 
     override func tearDown() async throws {
         try? FileManager.default.removeItem(at: directory)
     }
 
+    /// The payload the store sealed, captured the way the journey receives it.
+    private final class SealBox: @unchecked Sendable {
+        var sealed: [PendingOnboarding] = []
+    }
+
+    private var seals: SealBox!
+
     @MainActor
     private func makeStore(
         _ service: StubService,
         deadline: Duration = .milliseconds(50)
     ) -> OnboardingStore {
-        OnboardingStore(
-            service: service, storage: storage(), languageCode: "es", firstPaintDeadline: deadline
+        let box = seals!
+        return OnboardingStore(
+            service: service,
+            storage: storage(),
+            pendingStorage: pendingStorage(),
+            languageCode: "es",
+            firstPaintDeadline: deadline,
+            onSealed: { box.sealed.append($0) }
         )
     }
 
     private func storage() -> OnboardingStorage {
         OnboardingStorage(directory: directory, bundle: .main)
+    }
+
+    private func pendingStorage() -> PendingOnboardingStorage {
+        PendingOnboardingStorage(
+            directory: directory.appending(path: "Protected", directoryHint: .isDirectory)
+        )
     }
 
     private func twoQuestionQuestionnaire() throws -> Questionnaire {
@@ -184,7 +206,7 @@ nonisolated final class OnboardingStoreTests: XCTestCase {
 
         let first = makeStore(service)
         await first.load()
-        first.answer(.single(optionId: "yes"), for: "a")
+        await first.answer(.single(optionId: "yes"), for: "a")
 
         let second = makeStore(service)
         await second.load()
@@ -201,7 +223,7 @@ nonisolated final class OnboardingStoreTests: XCTestCase {
         service.questionnaire = try twoQuestionQuestionnaire()
         let first = makeStore(service)
         await first.load()
-        first.answer(.single(optionId: "yes"), for: "a")
+        await first.answer(.single(optionId: "yes"), for: "a")
 
         // The server has moved on.
         let moved = try OnboardingFixtures.questionnaire(
@@ -218,55 +240,174 @@ nonisolated final class OnboardingStoreTests: XCTestCase {
         XCTAssertNil(second.flow?.answers["a"], "answers to version 1 do not carry over")
     }
 
-    // MARK: Submitting
+    // MARK: Sealing locally
 
+    /// The end of the chat is a protected local write and nothing else.
     @MainActor
-    func testSubmittingSendsEveryVisibleAnswerAndClearsTheDraft() async throws {
+    func testFinishingSealsEveryVisibleAnswerLocally() async throws {
         let service = StubService()
         service.questionnaire = try twoQuestionQuestionnaire()
         let store = makeStore(service)
         await store.load()
 
-        store.answer(.single(optionId: "yes"), for: "a")
-        store.answer(.text("hello"), for: "b")
-        XCTAssertTrue(store.canSubmit)
+        await store.answer(.single(optionId: "yes"), for: "a")
+        await store.answer(.text("hello"), for: "b")
+        XCTAssertTrue(store.canFinish)
 
-        await store.submit()
+        await store.finish()
 
         XCTAssertEqual(store.state, .finished)
-        XCTAssertEqual(service.submissions.count, 1)
-        XCTAssertEqual(service.submissions[0].answers.map(\.questionId), ["a", "b"])
+        XCTAssertEqual(seals.sealed.count, 1)
+        XCTAssertEqual(seals.sealed[0].submission.answers.map(\.questionId), ["a", "b"])
 
-        // The draft is gone, so a relaunch does not reopen a finished flow.
-        let next = makeStore(service)
-        await next.load()
-        XCTAssertNil(next.flow?.answers["a"])
+        // And it is on disk, not merely in the callback.
+        let onDisk = try await pendingStorage().load()
+        XCTAssertEqual(onDisk?.submission.sessionId, seals.sealed[0].submission.sessionId)
     }
 
-    /// A failed submission keeps every answer and reuses the same session id, so
-    /// the retry reads as a repeat rather than as a second person.
+    /// The whole point of feature 010: no answer reaches the network before an
+    /// account exists. The store's service can only fetch, and it was asked for
+    /// nothing but the questionnaire.
     @MainActor
-    func testAFailedSubmissionCanBeRetriedUnderTheSameSessionId() async throws {
+    func testFinishingMakesNoRequestAtAll() async throws {
         let service = StubService()
         service.questionnaire = try twoQuestionQuestionnaire()
-        service.submitError = OnboardingError.timeout
         let store = makeStore(service)
         await store.load()
-        store.answer(.single(optionId: "yes"), for: "a")
-        store.answer(.text("hello"), for: "b")
+        let fetchesAfterLoad = service.fetchedLanguages.count
 
-        await store.submit()
-        XCTAssertEqual(store.state, .failed(.timeout))
+        await store.answer(.single(optionId: "yes"), for: "a")
+        await store.answer(.text("hello"), for: "b")
+        await store.finish()
 
-        store.dismissFailure()
+        XCTAssertEqual(service.fetchedLanguages.count, fetchesAfterLoad,
+                       "answering and finishing sent nothing")
+    }
+
+    /// A sealed payload carries the moment the answers were finished, not the
+    /// moment they are eventually uploaded — those can be days apart.
+    @MainActor
+    func testSealedPayloadKeepsItsOwnTimestampsAndSessionIdentity() async throws {
+        let service = StubService()
+        service.questionnaire = try twoQuestionQuestionnaire()
+        let store = makeStore(service)
+        await store.load()
+        await store.answer(.single(optionId: "yes"), for: "a")
+        await store.answer(.text("hello"), for: "b")
+
+        await store.finish()
+
+        let sealed = try XCTUnwrap(seals.sealed.first).submission
+        XCTAssertEqual(sealed.onboardingId, "test_v1")
+        XCTAssertEqual(sealed.contentVersion, 1)
+        XCTAssertEqual(sealed.locale, "es")
+        XCTAssertLessThanOrEqual(sealed.startedAt, sealed.completedAt)
+    }
+
+    /// Resealing after a review edit keeps the same session id, so the server
+    /// still sees one plan request rather than two.
+    @MainActor
+    func testResumingAReviewResealsUnderTheSameSessionId() async throws {
+        let service = StubService()
+        service.questionnaire = try twoQuestionQuestionnaire()
+
+        let first = makeStore(service)
+        await first.load()
+        await first.answer(.single(optionId: "yes"), for: "a")
+        await first.answer(.text("hello"), for: "b")
+        await first.finish()
+        let original = try XCTUnwrap(seals.sealed.first).submission
+
+        // What the root does when the user taps "Review answers".
+        let second = makeStore(service)
+        await second.load()
+        second.resume(sessionId: original.sessionId, startedAt: original.startedAt)
+        await second.answer(.text("changed"), for: "b")
+        await second.finish()
+
+        let resealed = try XCTUnwrap(seals.sealed.last).submission
+        XCTAssertEqual(resealed.sessionId, original.sessionId)
+        XCTAssertEqual(resealed.startedAt, original.startedAt)
+        XCTAssertEqual(resealed.answers.last?.answer, .text("changed"))
+    }
+
+    /// An incomplete flow cannot be sealed: the key it would claim is the key a
+    /// complete payload will need.
+    @MainActor
+    func testAnIncompleteFlowCannotBeSealed() async throws {
+        let service = StubService()
+        service.questionnaire = try twoQuestionQuestionnaire()
+        let store = makeStore(service)
+        await store.load()
+        await store.answer(.single(optionId: "yes"), for: "a")
+
+        XCTAssertFalse(store.canFinish)
+        await store.finish()
+
         XCTAssertEqual(store.state, .asking)
-        XCTAssertEqual(store.flow?.answers.count, 2, "nothing was lost")
+        XCTAssertTrue(seals.sealed.isEmpty)
+    }
 
-        service.submitError = nil
-        await store.submit()
+    // MARK: Storage failures
 
-        XCTAssertEqual(service.submissions.count, 2)
-        XCTAssertEqual(service.submissions[0].sessionId, service.submissions[1].sessionId)
+    /// The thread must not advance past an answer the disk does not have. A
+    /// regular file where the protected directory belongs makes every write
+    /// fail, which is the same shape as a full disk.
+    @MainActor
+    func testAnAnswerThatCannotBeSavedDoesNotAdvanceTheQuestion() async throws {
+        let service = StubService()
+        service.questionnaire = try twoQuestionQuestionnaire()
+        let store = makeStore(service)
+        await store.load()
+        let openQuestion = store.flow?.currentQuestion?.id
+
+        blockProtectedDirectory()
+        await store.answer(.single(optionId: "yes"), for: "a")
+
+        XCTAssertEqual(store.storageFailure, .answer)
+        XCTAssertNil(store.flow?.answers["a"], "nothing was recorded")
+        XCTAssertEqual(store.flow?.currentQuestion?.id, openQuestion, "and nothing advanced")
+    }
+
+    /// And the message it raises is about the device, not the network — those
+    /// call for completely different actions.
+    @MainActor
+    func testAFailedSealKeepsTheUserInTheChat() async throws {
+        let service = StubService()
+        service.questionnaire = try twoQuestionQuestionnaire()
+        let store = makeStore(service)
+        await store.load()
+        await store.answer(.single(optionId: "yes"), for: "a")
+        await store.answer(.text("hello"), for: "b")
+
+        blockProtectedDirectory()
+        await store.finish()
+
+        XCTAssertEqual(store.storageFailure, .seal)
+        XCTAssertEqual(store.state, .asking, "access is not shown with nothing behind it")
+        XCTAssertTrue(seals.sealed.isEmpty)
+    }
+
+    @MainActor
+    func testDismissingAStorageFailureClearsIt() async throws {
+        let service = StubService()
+        service.questionnaire = try twoQuestionQuestionnaire()
+        let store = makeStore(service)
+        await store.load()
+
+        blockProtectedDirectory()
+        await store.answer(.single(optionId: "yes"), for: "a")
+        XCTAssertNotNil(store.storageFailure)
+
+        store.dismissStorageFailure()
+        XCTAssertNil(store.storageFailure)
+    }
+
+    /// Put a regular file where `Protected/` needs to be.
+    private func blockProtectedDirectory() {
+        let blocked = directory.appending(path: "Protected", directoryHint: .isDirectory)
+        try? FileManager.default.removeItem(at: blocked)
+        FileManager.default.createFile(atPath: blocked.path, contents: Data("x".utf8))
     }
 
     // MARK: Cross-checks
@@ -296,14 +437,14 @@ nonisolated final class OnboardingStoreTests: XCTestCase {
         await store.load()
 
         let heavier = MeasureAnswer(canonical: 80, unit: "kg", displayUnit: "kg", displayComponents: ["kg": 80])
-        store.answer(.measure(heavier), for: "weight")
+        await store.answer(.measure(heavier), for: "weight")
         let higher = MeasureAnswer(canonical: 90, unit: "kg", displayUnit: "kg", displayComponents: ["kg": 90])
-        store.answer(.measure(higher), for: "target")
+        await store.answer(.measure(higher), for: "target")
 
         XCTAssertNotNil(store.warning, "the contradiction is raised")
         XCTAssertNil(store.flow?.answers["target"], "and nothing is recorded yet")
 
-        store.acceptWarning()
+        await store.acceptWarning()
 
         XCTAssertNil(store.warning)
         XCTAssertEqual(store.flow?.answers["target"], .measure(higher), "insisting is allowed")

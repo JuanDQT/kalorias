@@ -63,6 +63,30 @@ private nonisolated final class StubURLProtocol: URLProtocol {
     override func stopLoading() {}
 }
 
+private nonisolated final class StubAnalysisSessions: AuthSessionProviding, @unchecked Sendable {
+    private let lock = NSLock()
+    private var _refreshCalls = 0
+    private var _endSessionCalls = 0
+
+    var refreshCalls: Int { lock.withLock { _refreshCalls } }
+    var endSessionCalls: Int { lock.withLock { _endSessionCalls } }
+
+    func validAccessToken() async throws -> String { "analysis-access-1" }
+
+    func refreshedAccessToken(replacing spentToken: String) async throws -> String {
+        lock.withLock { _refreshCalls += 1 }
+        return "analysis-access-2"
+    }
+
+    func currentSession() async -> AuthSession? { nil }
+    func commit(_ session: AuthSession) async throws {}
+    func commitOnboardingStatus(_ status: OnboardingServerStatus) async throws {}
+
+    func endSession() async {
+        lock.withLock { _endSessionCalls += 1 }
+    }
+}
+
 nonisolated final class RemoteCalorieServiceTests: XCTestCase {
 
     private let baseURL = URL(string: "http://localhost:8000")!
@@ -82,10 +106,15 @@ nonisolated final class RemoteCalorieServiceTests: XCTestCase {
 
     /// Built from the service's own configuration, so these tests exercise the
     /// real timeouts and cache policy rather than a convenient stand-in.
-    private func makeService(baseURL: URL?) -> RemoteCalorieService {
+    private func makeService(
+        baseURL: URL?,
+        sessions: StubAnalysisSessions = StubAnalysisSessions()
+    ) -> RemoteCalorieService {
         let configuration = RemoteCalorieService.makeConfiguration()
         configuration.protocolClasses = [StubURLProtocol.self]
-        return RemoteCalorieService(baseURL: baseURL, session: URLSession(configuration: configuration))
+        let network = URLSession(configuration: configuration)
+        let client = AuthenticatedHTTPClient(sessions: sessions, session: network)
+        return RemoteCalorieService(baseURL: baseURL, session: network, client: client)
     }
 
     private func respond(_ status: Int, _ body: Data = Data(), headers: [String: String] = [:]) {
@@ -212,22 +241,62 @@ nonisolated final class RemoteCalorieServiceTests: XCTestCase {
         XCTAssertEqual(request.url?.absoluteString, "http://localhost:8000/api/v1/kalorias/analyzeMeal")
     }
 
-    /// FR-004. Sending a credential here would be a defect, not a precaution:
-    /// the server holds the provider key and this endpoint takes no auth.
-    func testNoAuthorizationHeaderIsSent() async throws {
+    /// Feature 010 supersedes feature 009's anonymous endpoint: analysis now
+    /// uses the same Kalorias session as onboarding finalization.
+    func testAuthorizationHeaderCarriesTheKaloriasBearer() async throws {
         respond(200, successBody)
         _ = await analyze(baseURL: baseURL)
 
         let request = try XCTUnwrap(StubURLProtocol.requests.first)
-        let headers = request.allHTTPHeaderFields ?? [:]
+        XCTAssertEqual(
+            request.value(forHTTPHeaderField: "Authorization"),
+            "Bearer analysis-access-1"
+        )
+    }
 
-        XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
-        for name in headers.keys {
-            XCTAssertFalse(
-                name.lowercased().contains("auth") || name.lowercased().contains("api-key"),
-                "unexpected credential header: \(name)"
+    func testAuthFirst401RefreshesAndReplaysTheAnalysisExactlyOnce() async throws {
+        let sessions = StubAnalysisSessions()
+        StubURLProtocol.stub { [successBody] request in
+            let token = request.value(forHTTPHeaderField: "Authorization")
+            let status = token == "Bearer analysis-access-1" ? 401 : 200
+            return (
+                HTTPURLResponse(
+                    url: request.url ?? URL(string: "http://localhost:8000")!,
+                    statusCode: status,
+                    httpVersion: "HTTP/1.1",
+                    headerFields: nil
+                )!,
+                status == 200 ? successBody : Data()
             )
         }
+
+        let outcome = try await makeService(baseURL: baseURL, sessions: sessions)
+            .analyze(imageData: imageData)
+
+        XCTAssertEqual(outcome.foodCount, 2)
+        XCTAssertEqual(StubURLProtocol.requests.count, 2)
+        XCTAssertEqual(sessions.refreshCalls, 1)
+        XCTAssertEqual(
+            StubURLProtocol.requests.last?.value(forHTTPHeaderField: "Authorization"),
+            "Bearer analysis-access-2"
+        )
+    }
+
+    func testASecond401StopsWithoutAnotherReplay() async {
+        let sessions = StubAnalysisSessions()
+        respond(401)
+
+        do {
+            _ = try await makeService(baseURL: baseURL, sessions: sessions)
+                .analyze(imageData: imageData)
+            XCTFail("A second unauthorized response must end the request.")
+        } catch {
+            XCTAssertEqual(error as? AnalysisError, .serviceError)
+        }
+
+        XCTAssertEqual(StubURLProtocol.requests.count, 2)
+        XCTAssertEqual(sessions.refreshCalls, 1)
+        XCTAssertEqual(sessions.endSessionCalls, 1)
     }
 
     func testContentTypeIsMultipartWithAGeneratedBoundary() async throws {

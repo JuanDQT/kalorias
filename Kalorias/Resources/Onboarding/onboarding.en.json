@@ -2,7 +2,7 @@
   "data": {
     "onboardingId": "plan_v1",
     "schemaVersion": 1,
-    "contentVersion": 4,
+    "contentVersion": 5,
     "locale": "en",
     "sections": [
       {
@@ -71,33 +71,6 @@
                 "title": "No, just counting",
                 "description": "You decide what to eat, I'll keep the count",
                 "emoji": "📊"
-              }
-            ]
-          },
-          {
-            "id": "motivation_level",
-            "type": "single_choice",
-            "prompt": [
-              "How motivated are you feeling right now?"
-            ],
-            "options": [
-              {
-                "id": "low",
-                "title": "I'm trying",
-                "description": "I need you to make this easy",
-                "emoji": "🙂"
-              },
-              {
-                "id": "medium",
-                "title": "Up for it",
-                "description": "I'm going for it",
-                "emoji": "😃"
-              },
-              {
-                "id": "high",
-                "title": "All in",
-                "description": "Nothing's stopping me",
-                "emoji": "🚀"
               }
             ]
           },

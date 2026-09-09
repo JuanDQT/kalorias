@@ -19,16 +19,24 @@
 //  disagrees with; "Continue" takes the value as given. A user who insists
 //  usually knows something the questionnaire does not.
 //
+//  FINISHING SENDS NOTHING (feature 010). The final action seals the answers
+//  into protected local storage and hands them to the journey, which then shows
+//  Sign in with Apple. The copy says so: the plan is not "on its way" until an
+//  account exists and the user has separately agreed to their data being
+//  processed.
+//
+//  A FAILED WRITE STOPS THE THREAD WHERE IT IS. An answer whose draft did not
+//  land is not shown as accepted, and the message says "on this device" rather
+//  than blaming the network — those call for completely different actions.
+//
 
 import SwiftUI
 
 struct OnboardingChatView: View {
     @State private var store: OnboardingStore
-    private let onFinished: () -> Void
 
-    init(store: OnboardingStore = OnboardingStore(), onFinished: @escaping () -> Void = {}) {
+    init(store: OnboardingStore = OnboardingStore()) {
         _store = State(initialValue: store)
-        self.onFinished = onFinished
     }
 
     /// The anchor the thread scrolls to. One id, so nothing has to guess which
@@ -45,7 +53,7 @@ struct OnboardingChatView: View {
                     .controlSize(.large)
                     .tint(AppColor.brandPrimary)
 
-            case .asking, .submitting:
+            case .asking, .sealing:
                 chat
 
             case .finished:
@@ -62,8 +70,12 @@ struct OnboardingChatView: View {
             Alert(
                 title: Text("onboarding.warning.title"),
                 message: Text(verbatim: pending.check.message),
-                primaryButton: .default(Text("onboarding.warning.review")) { store.reviewWarning() },
-                secondaryButton: .cancel(Text("onboarding.warning.continue")) { store.acceptWarning() }
+                primaryButton: .default(Text("onboarding.warning.review")) {
+                    Task { await store.reviewWarning() }
+                },
+                secondaryButton: .cancel(Text("onboarding.warning.continue")) {
+                    Task { await store.acceptWarning() }
+                }
             )
         }
     }
@@ -82,7 +94,7 @@ struct OnboardingChatView: View {
                             ForEach(flow.answeredQuestions, id: \.question.id) { entry in
                                 thread(for: entry.question, in: flow) {
                                     AnswerBubble(text: entry.answer.summary(for: entry.question)) {
-                                        store.reopen(entry.question.id)
+                                        Task { await store.reopen(entry.question.id) }
                                     }
                                 }
                             }
@@ -94,7 +106,9 @@ struct OnboardingChatView: View {
                                         initial: nil,
                                         followedUnit: followedUnit(for: current, in: flow),
                                         followedValue: followedValue(for: current, in: flow),
-                                        onAnswer: { store.answer($0, for: current.id) }
+                                        onAnswer: { answer in
+                                            Task { await store.answer(answer, for: current.id) }
+                                        }
                                     )
                                     // Identity by question id: reusing one
                                     // input's `@State` for the next question is
@@ -105,7 +119,11 @@ struct OnboardingChatView: View {
                             }
 
                             if flow.isComplete {
-                                submitButton
+                                finishButton
+                            }
+
+                            if let failure = store.storageFailure {
+                                storageFailureNotice(failure)
                             }
 
                             Color.clear.frame(height: 1).id(bottomAnchor)
@@ -121,7 +139,7 @@ struct OnboardingChatView: View {
             }
             .animation(AppMotion.standard, value: flow.answers.count)
             .overlay {
-                if case .submitting = store.state {
+                if case .sealing = store.state {
                     ZStack {
                         AppColor.surfacePrimary.opacity(0.9).ignoresSafeArea()
                         ProgressView().controlSize(.large).tint(AppColor.brandPrimary)
@@ -165,9 +183,9 @@ struct OnboardingChatView: View {
         .padding(.vertical, AppSpacing.md)
     }
 
-    private var submitButton: some View {
+    private var finishButton: some View {
         Button {
-            Task { await store.submit() }
+            Task { await store.finish() }
         } label: {
             Text("onboarding.createPlan").frame(maxWidth: .infinity)
         }
@@ -179,23 +197,40 @@ struct OnboardingChatView: View {
 
     // MARK: Terminal states
 
+    /// A brief acknowledgement while the journey swaps the root to Access. The
+    /// handoff already happened — the payload was on disk before this appeared —
+    /// so there is nothing here to tap and nothing to wait for.
     private var finished: some View {
         VStack(spacing: AppSpacing.lg) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 56))
+                .font(.largeTitle)
                 .foregroundStyle(AppColor.success)
                 .accessibilityHidden(true)
-            Text("onboarding.done.title").rowTitleRole()
-            Button {
-                onFinished()
-            } label: {
-                Text("onboarding.done.action").padding(.horizontal, AppSpacing.xl)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(AppColor.brandPrimaryFill)
-            .controlSize(.large)
+            Text("onboarding.done.title")
+                .rowTitleRole()
+                .multilineTextAlignment(.center)
         }
         .padding(AppSpacing.xxl)
+    }
+
+    /// A write that did not land. The thread does not advance, and the copy says
+    /// "on this device" so nobody spends five minutes toggling airplane mode.
+    private func storageFailureNotice(_ failure: OnboardingStore.StorageFailure) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            Text("onboarding.storageError")
+                .supportingTextRole()
+                .foregroundStyle(AppColor.danger)
+                .fixedSize(horizontal: false, vertical: true)
+            Button {
+                store.dismissStorageFailure()
+            } label: {
+                Text("common.tryAgain")
+            }
+            .buttonStyle(.bordered)
+        }
+        .padding(.top, AppSpacing.md)
+        .accessibilityIdentifier("onboarding.storageError")
+        .transition(AppMotion.subtleTransition)
     }
 
     private func failure(_ error: OnboardingError) -> some View {
@@ -249,7 +284,7 @@ struct OnboardingChatView: View {
     private var warningBinding: Binding<IdentifiedWarning?> {
         Binding(
             get: { store.warning.map(IdentifiedWarning.init) },
-            set: { if $0 == nil, store.warning != nil { store.acceptWarning() } }
+            set: { if $0 == nil, store.warning != nil { Task { await store.acceptWarning() } } }
         )
     }
 

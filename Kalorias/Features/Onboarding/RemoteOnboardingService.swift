@@ -11,19 +11,27 @@
 //
 //  THE QUESTIONNAIRE IS CACHEABLE, THE SUBMISSION IS NOT. The `GET` is public
 //  content that changes on deploys, so it uses the shared session and lets
-//  `ETag` do its job; the `POST` carries health data and goes out on an
-//  ephemeral session that keeps no cache, no cookies and no credentials.
+//  `ETag` do its job; the `POST` carries health data and goes out authenticated,
+//  on an ephemeral session that keeps no cache and no cookies.
+//
+//  THE `GET` STAYS ANONYMOUS, AND THAT IS A REQUIREMENT, NOT AN OVERSIGHT
+//  (FR-004, FR-045). It carries no `Authorization`, no user id, no device id and
+//  no analytics identity, because it happens before an account exists and must
+//  not become a way to correlate a person with the questionnaire they were
+//  served. `ETag` is the only state it keeps.
+//
+//  THE `POST` IS THE OPPOSITE, since feature 010: a valid Kalorias bearer is
+//  mandatory, and it goes through `AuthenticatedHTTPClient` so token refresh and
+//  the single safe replay are decided in one place rather than here.
 //
 //  `Idempotency-Key` IS THE WHOLE RETRY STORY. The app resends the same
 //  `sessionId` after a timeout, and the server is expected to answer the first
 //  result rather than build a second plan.
 //
-//  NO AUTHORIZATION HEADER, same as `analyzeMeal`.
-//
 
 import Foundation
 
-nonisolated struct RemoteOnboardingService: OnboardingProviding {
+nonisolated struct RemoteOnboardingService: OnboardingFetching {
 
     static let onboardingPath = "/api/v1/kalorias/onboarding"
 
@@ -84,21 +92,5 @@ nonisolated struct RemoteOnboardingService: OnboardingProviding {
         }
 
         return FetchedQuestionnaire(questionnaire: questionnaire, payload: data)
-    }
-
-    // MARK: Submitting
-
-    func submit(_ submission: OnboardingSubmission) async throws {
-        guard let baseURL else { throw OnboardingError.serviceError }
-
-        var request = URLRequest(url: baseURL.appending(path: Self.onboardingPath))
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(submission.sessionId.uuidString, forHTTPHeaderField: "Idempotency-Key")
-        request.httpBody = try OnboardingSubmission.makeEncoder().encode(submission)
-
-        let (_, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw OnboardingError.serviceError }
-        guard (200...299).contains(http.statusCode) else { throw OnboardingError.serviceError }
     }
 }

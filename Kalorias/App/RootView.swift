@@ -2,19 +2,23 @@
 //  RootView.swift
 //  Kalorias
 //
-//  The app shell: shows the content for the currently selected tab above the
-//  shared Liquid Glass bottom bar, and presents the camera flow (permission
-//  gate or live camera) as a single full-screen cover.
+//  The root: exactly one journey phase on screen, and inside `ready` the tab
+//  shell with its Liquid Glass bottom bar and the camera full-screen cover.
 //
-//  THE ONBOARDING COVERS EVERYTHING UNTIL IT IS DONE. It is presented over the
-//  shell rather than replacing it so the app behind it is already built and
-//  warm when the chat dismisses — and so that finishing is one flag flip, with
-//  no navigation state to unwind.
+//  IT SWITCHES; IT NO LONGER COVERS. Until feature 010 the onboarding was a
+//  `fullScreenCover` over an already-built tab shell, flipped off by a single
+//  `@AppStorage` flag. That was a reasonable trade when "done" meant one thing,
+//  and it stopped being one the moment the app grew identity gates: an
+//  authenticated view must not exist behind Access or Consent — not built, not
+//  warm, not for the length of an animation — because the account it would be
+//  showing may belong to somebody else, or to nobody.
 //
-//  THE FLAG IS WRITTEN ONLY AFTER THE ANSWERS ARE ACCEPTED BY THE SERVER. If it
-//  were set when the chat opened, a user who dies on the last question would
-//  never be asked again and would have no plan. The half-finished draft is what
-//  survives a kill; this flag means "the server has it".
+//  THE PHASE COMES FROM DURABLE STATE, NOT FROM A FLAG. `AppJourneyStore`
+//  resolves it from the Keychain and protected storage; see that file for why a
+//  Boolean could not.
+//
+//  EVERY PHASE CHANGE ANIMATES THROUGH `AppMotion.standard`, which is also where
+//  Reduce Motion is substituted — no view here checks the setting.
 //
 
 import SwiftUI
@@ -22,16 +26,86 @@ import SwiftUI
 struct RootView: View {
     @Environment(Router.self) private var router
     @Environment(CameraPermissionStore.self) private var permission
-
-    @AppStorage("onboarding.completed") private var hasCompletedOnboarding = false
+    @Environment(AppJourneyStore.self) private var journey
+    @Environment(MealHistoryRepository.self) private var history
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        @Bindable var router = router
-
         ZStack {
             AppColor.surfacePrimary
                 .ignoresSafeArea()
 
+            phaseContent
+                .transition(AppMotion.standardTransition)
+        }
+        .animation(AppMotion.standard, value: journey.phase)
+        .task { await journey.bootstrap() }
+        // The identity changed: point local history at the new account and tear
+        // down whatever the previous one had open, *before* any of it can render
+        // over a gate (UI contract, Root Phase Contract).
+        .onChange(of: journey.activeUserID, initial: true) { _, userID in
+            router.resetForIdentityChange()
+            history.setActiveUser(userID)
+        }
+        // A revocation can happen in Settings while the app is backgrounded, so
+        // the credential is re-checked on the way back in.
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await journey.applicationDidBecomeActive() }
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: AppleCredentialStateService.revocationNotification
+            )
+        ) { _ in
+            Task { await journey.appleCredentialWasRevoked() }
+        }
+    }
+
+    @ViewBuilder
+    private var phaseContent: some View {
+        switch journey.phase {
+        case .restoring:
+            RestoringView()
+
+        case .onboarding:
+            OnboardingChatView(store: makeOnboardingStore())
+
+        case .access:
+            AccessView()
+
+        case .consent:
+            HealthDataConsentView()
+
+        case .finalizing:
+            FinalizingOnboardingView()
+
+        case .ready:
+            authenticatedShell
+
+        case .deletingAccount:
+            AccountDeletionView()
+        }
+    }
+
+    /// A chat that reports its sealed payload to the journey, and resumes the
+    /// existing session identity when the user came back to review answers.
+    private func makeOnboardingStore() -> OnboardingStore {
+        let store = OnboardingStore(onSealed: { pending in
+            journey.onboardingDidSeal(pending)
+        })
+        if let identity = journey.resumableOnboardingIdentity {
+            store.resume(sessionId: identity.sessionId, startedAt: identity.startedAt)
+        }
+        return store
+    }
+
+    // MARK: The authenticated shell
+
+    private var authenticatedShell: some View {
+        @Bindable var router = router
+
+        return ZStack {
             content
 
             // A floating overlay, deliberately NOT a safe-area inset. Feature 006
@@ -51,9 +125,6 @@ struct RootView: View {
             )
             .padding(.bottom, 8)
             .frame(maxHeight: .infinity, alignment: .bottom)
-        }
-        .fullScreenCover(isPresented: .constant(hasCompletedOnboarding == false)) {
-            OnboardingChatView { hasCompletedOnboarding = true }
         }
         .fullScreenCover(item: $router.cameraFlow) { flow in
             switch flow {
@@ -80,10 +151,30 @@ struct RootView: View {
     private var content: some View {
         switch router.selectedTab {
         case .progress:
-            ProgressTabView()
+            ProgressTabView(ownerUserID: journey.activeUserID)
         case .history:
-            HistoryView()
+            HistoryView(ownerUserID: journey.activeUserID)
         }
+    }
+}
+
+// MARK: - Restoring
+
+/// What the app shows while it reads its own durable state — including on a
+/// locked device, where the protected files simply cannot be opened yet.
+struct RestoringView: View {
+    var body: some View {
+        VStack(spacing: AppSpacing.lg) {
+            ProgressView()
+                .controlSize(.large)
+                .tint(AppColor.brandPrimary)
+            Text("journey.restoring.title")
+                .supportingTextRole()
+                .foregroundStyle(AppColor.textSecondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(AppColor.surfacePrimary)
+        .accessibilityIdentifier("journey.restoring")
     }
 }
 
@@ -91,4 +182,5 @@ struct RootView: View {
     RootView()
         .environment(Router())
         .environment(CameraPermissionStore())
+        .environment(AppJourneyStore())
 }
