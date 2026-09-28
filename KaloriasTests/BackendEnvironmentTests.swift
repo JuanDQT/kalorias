@@ -72,6 +72,20 @@ nonisolated final class BackendEnvironmentTests: XCTestCase {
         XCTAssertEqual(url.absoluteString, "https://www.example.com")
     }
 
+    func testAppStoreURLUsesItsDedicatedBuildSetting() throws {
+        var requestedKeys: [String] = []
+        let url = BackendEnvironment.baseURL(
+            readingFrom: { key in
+                requestedKeys.append(key)
+                return "https://apps.apple.com/app/id1234567890"
+            },
+            key: BackendEnvironment.appStoreURLInfoDictionaryKey
+        )
+
+        XCTAssertEqual(url?.host(), "apps.apple.com")
+        XCTAssertEqual(requestedKeys, ["KaloriasAppStoreURL"])
+    }
+
     // MARK: The location it names
 
     /// Naming the key is only worth anything if it is the key actually looked
@@ -87,5 +101,49 @@ nonisolated final class BackendEnvironmentTests: XCTestCase {
 
         XCTAssertEqual(requestedKeys, [BackendEnvironment.baseURLInfoDictionaryKey])
         XCTAssertEqual(requestedKeys, ["KaloriasAPIBaseURL"])
+    }
+
+    // MARK: Consent release configuration
+
+    func testConsentConfigurationRequiresThePublishedURLAndBothVersions() throws {
+        let values = [
+            "KaloriasPrivacyPolicyURL": "https://www.example.com/privacy",
+            "KaloriasPrivacyNoticeVersion": "privacy-2026-09",
+            "KaloriasHealthDataConsentVersion": "health-2026-09",
+        ]
+
+        let configuration = try XCTUnwrap(
+            BackendEnvironment.consentConfiguration { values[$0] }
+        )
+
+        XCTAssertEqual(configuration.privacyPolicyURL.absoluteString, "https://www.example.com/privacy")
+        XCTAssertEqual(configuration.privacyNoticeVersion, "privacy-2026-09")
+        XCTAssertEqual(configuration.healthDataConsentVersion, "health-2026-09")
+    }
+
+    func testConsentConfigurationFailsClosedWhenAnyReleaseInputIsMissing() {
+        let complete = [
+            "KaloriasPrivacyPolicyURL": "https://www.example.com/privacy",
+            "KaloriasPrivacyNoticeVersion": "privacy-v1",
+            "KaloriasHealthDataConsentVersion": "health-v1",
+        ]
+
+        for missing in complete.keys {
+            var values = complete
+            values[missing] = nil
+            XCTAssertNil(
+                BackendEnvironment.consentConfiguration { values[$0] },
+                "missing \(missing) must prevent a receipt"
+            )
+        }
+    }
+
+    func testConsentVersionsRejectBlankOversizedAndProvisionalValues() {
+        XCTAssertNil(BackendEnvironment.configuredIdentifier(nil))
+        XCTAssertNil(BackendEnvironment.configuredIdentifier("  "))
+        XCTAssertNil(BackendEnvironment.configuredIdentifier(String(repeating: "x", count: 33)))
+        XCTAssertNil(BackendEnvironment.configuredIdentifier("<PENDIENTE>"))
+        XCTAssertNil(BackendEnvironment.configuredIdentifier("placeholder-v1"))
+        XCTAssertEqual(BackendEnvironment.configuredIdentifier(" version-1 "), "version-1")
     }
 }

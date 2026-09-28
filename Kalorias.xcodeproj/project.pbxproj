@@ -42,7 +42,6 @@
 		AFD565CF058B96641D981283 /* MultipartFormDataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7E731CABF62832858FE5D4B /* MultipartFormDataTests.swift */; };
 		BE5493B7E190BFF780EB36D6 /* CustomValueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B61652EE886270FFA13A9E18 /* CustomValueTests.swift */; };
 		C7349CE2BF3EFD315FE5E89F /* OnboardingSubmissionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 859502DA46D1CC326D066176 /* OnboardingSubmissionTests.swift */; };
-		C797112628F45932476D431B /* BundledQuestionnaireTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30A38941F2BB3853204C045C /* BundledQuestionnaireTests.swift */; };
 		CDABFE56A169AE8D17B97857 /* KeychainCredentialStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF93600D098DEC7E92B58A4F /* KeychainCredentialStoreTests.swift */; };
 		CF7E0DA6CC2EFD516D8B9553 /* WeekSummaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BD6DEA9F3B5745B2E5DA70D /* WeekSummaryTests.swift */; };
 		D70495C6EC9F3A16BF423771 /* RetryCooldownTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A1EE17F30B0D890888F9AB /* RetryCooldownTests.swift */; };
@@ -73,7 +72,6 @@
 		26BF7B3E48E053698D54F1BE /* MealWeekGroupingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MealWeekGroupingTests.swift; sourceTree = "<group>"; };
 		2BD6DEA9F3B5745B2E5DA70D /* WeekSummaryTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WeekSummaryTests.swift; sourceTree = "<group>"; };
 		3043D3DA4E0E31AFE339A78A /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		30A38941F2BB3853204C045C /* BundledQuestionnaireTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BundledQuestionnaireTests.swift; sourceTree = "<group>"; };
 		34FC144A87B4C88E852B4E12 /* SendFrameTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SendFrameTests.swift; sourceTree = "<group>"; };
 		3BA056E9027A8BEFE4710E0B /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		3CA6674150C6953ED10E5BF6 /* AnalysisPhotoEncoderTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnalysisPhotoEncoderTests.swift; sourceTree = "<group>"; };
@@ -188,7 +186,6 @@
 				CC48BB2F2525F21E57D08602 /* DateTokenTests.swift */,
 				B61652EE886270FFA13A9E18 /* CustomValueTests.swift */,
 				859502DA46D1CC326D066176 /* OnboardingSubmissionTests.swift */,
-				30A38941F2BB3853204C045C /* BundledQuestionnaireTests.swift */,
 				7757CA206FD6DCE132613F0E /* OnboardingStoreTests.swift */,
 				42A1EE17F30B0D890888F9AB /* RetryCooldownTests.swift */,
 				3CA6674150C6953ED10E5BF6 /* AnalysisPhotoEncoderTests.swift */,
@@ -359,7 +356,6 @@
 				E29E301007D9C0F7337A2ECB /* DateTokenTests.swift in Sources */,
 				BE5493B7E190BFF780EB36D6 /* CustomValueTests.swift in Sources */,
 				C7349CE2BF3EFD315FE5E89F /* OnboardingSubmissionTests.swift in Sources */,
-				C797112628F45932476D431B /* BundledQuestionnaireTests.swift in Sources */,
 				62C0E7F4E084E064F37F641A /* OnboardingStoreTests.swift in Sources */,
 				D70495C6EC9F3A16BF423771 /* RetryCooldownTests.swift in Sources */,
 				9C4A8563AD271259B8AC77C0 /* RemoteCalorieServiceTests.swift in Sources */,
@@ -535,9 +531,11 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = Icon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Kalorias/Kalorias.entitlements;
-				CODE_SIGN_STYLE = Automatic;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 85RGNG7LK2;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 85RGNG7LK2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Config/Info.plist;
@@ -555,6 +553,8 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.quispe.kalorias.Kalorias;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "match Development com.quispe.kalorias.Kalorias";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -576,9 +576,11 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = Icon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Kalorias/Kalorias.entitlements;
-				CODE_SIGN_STYLE = Automatic;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 85RGNG7LK2;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 85RGNG7LK2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Config/Info.plist;
@@ -596,6 +598,8 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.quispe.kalorias.Kalorias;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "match AppStore com.quispe.kalorias.Kalorias";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;

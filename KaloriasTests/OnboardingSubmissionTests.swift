@@ -73,6 +73,45 @@ nonisolated final class OnboardingSubmissionTests: XCTestCase {
         XCTAssertEqual(json["value"] as? String, "2001-02-03")
     }
 
+    func testDateTimeKeepsInstantSelectedOffsetAndIANAZoneThroughWireRoundTrip() throws {
+        let instant = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-07-01T12:45:00Z"))
+        let zone = try XCTUnwrap(TimeZone(identifier: "Europe/Madrid"))
+        let answer = DateTimeAnswer(instant: instant, timeZone: zone)
+        let entry = OnboardingSubmission.Entry(questionId: "appointment", type: .date, answer: .dateTime(answer))
+
+        let data = try OnboardingSubmission.makeEncoder().encode(entry)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertEqual(json["type"] as? String, "date")
+        XCTAssertEqual(json["value"] as? String, "2026-07-01T14:45:00+02:00")
+        XCTAssertEqual(json["timeZone"] as? String, "Europe/Madrid")
+
+        let decoded = try OnboardingSubmission.makeDecoder().decode(OnboardingSubmission.Entry.self, from: data)
+        XCTAssertEqual(decoded, entry)
+        XCTAssertEqual(try OnboardingSubmission.makeEncoder().encode(decoded), data)
+    }
+
+    func testDateTimeRetainsOffsetAcrossDaylightSavingBoundary() throws {
+        let winter = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-01-15T12:45:00Z"))
+        let summer = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-07-15T12:45:00Z"))
+        let zone = try XCTUnwrap(TimeZone(identifier: "Europe/Madrid"))
+
+        XCTAssertEqual(DateTimeAnswer(instant: winter, timeZone: zone).wireValue, "2026-01-15T13:45:00+01:00")
+        XCTAssertEqual(DateTimeAnswer(instant: summer, timeZone: zone).wireValue, "2026-07-15T14:45:00+02:00")
+    }
+
+    func testDateTimeWireRejectsMissingOffsetOrZone() throws {
+        let invalidEntries = [
+            #"{"questionId":"appointment","type":"date","value":"2026-07-01T14:45:00","timeZone":"Europe/Madrid"}"#,
+            #"{"questionId":"appointment","type":"date","value":"2026-07-01T14:45:00+02:00"}"#,
+            #"{"questionId":"appointment","type":"date","value":"2026-07-01T14:45:00+02:00","timeZone":"Invalid/Zone"}"#
+        ]
+        for raw in invalidEntries {
+            XCTAssertThrowsError(try OnboardingSubmission.makeDecoder().decode(
+                OnboardingSubmission.Entry.self, from: Data(raw.utf8)
+            ))
+        }
+    }
+
     func testSkippedIsDistinctFromAnyValue() throws {
         let json = try encode(.init(questionId: "extra_notes", type: .text, answer: .skipped))
         XCTAssertEqual(json["skipped"] as? Bool, true)
@@ -173,6 +212,7 @@ nonisolated final class OnboardingRequestTests: XCTestCase {
 
         let request = try XCTUnwrap(AuthStubURLProtocol.requests.first)
         XCTAssertEqual(request.httpMethod, "GET")
+        XCTAssertEqual(request.cachePolicy, .reloadIgnoringLocalCacheData)
         XCTAssertEqual(request.url?.path(), "/api/v1/kalorias/onboarding")
 
         let components = URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false)
@@ -194,6 +234,89 @@ nonisolated final class OnboardingRequestTests: XCTestCase {
         }
         XCTAssertNil(request.httpBody, "a fetch sends no draft")
         XCTAssertEqual(AuthStubURLProtocol.bodies.first, Data())
+    }
+
+    func testQuestionnaireSessionDisablesURLCache() {
+        let configuration = RemoteOnboardingService.makeConfiguration()
+        XCTAssertNil(configuration.urlCache)
+        XCTAssertEqual(configuration.requestCachePolicy, .reloadIgnoringLocalCacheData)
+    }
+
+    func testNewSchemaRequiresAnUpdateEvenWhenItsQuestionTypeCannotDecode() async throws {
+        let questionnaire = OnboardingFixtures.wrap(
+            sections: OnboardingFixtures.section(id: "s", questions: OnboardingFixtures.gate("a"))
+        )
+        .replacingOccurrences(of: "\"schemaVersion\": 1", with: "\"schemaVersion\": 2")
+        .replacingOccurrences(of: "single_choice", with: "slider")
+        AuthStubURLProtocol.stub { request in
+            (AuthFixtures.response(request.url!, 200), Data("{\"data\": \(questionnaire)}".utf8))
+        }
+
+        let service = RemoteOnboardingService(baseURL: baseURL, session: AuthStubURLProtocol.makeSession())
+        do {
+            _ = try await service.fetchQuestionnaire(languageCode: "es")
+            XCTFail("An incompatible schema must block the entire questionnaire")
+        } catch {
+            XCTAssertEqual(error as? OnboardingError, .unsupportedSchema(version: 2))
+        }
+    }
+
+    func testUnknownQuestionTypeOrFieldRequiresAnUpdate() async throws {
+        let base = OnboardingFixtures.wrap(
+            sections: OnboardingFixtures.section(id: "s", questions: OnboardingFixtures.gate("a"))
+        )
+        for questionnaire in [
+            base.replacingOccurrences(of: "single_choice", with: "slider"),
+            base.replacingOccurrences(
+                of: "\"type\": \"single_choice\"",
+                with: "\"type\": \"single_choice\", \"slider\": { \"min\": 0 }"
+            )
+        ] {
+            AuthStubURLProtocol.stub { request in
+                (AuthFixtures.response(request.url!, 200), Data("{\"data\": \(questionnaire)}".utf8))
+            }
+            let service = RemoteOnboardingService(baseURL: baseURL, session: AuthStubURLProtocol.makeSession())
+            do {
+                _ = try await service.fetchQuestionnaire(languageCode: "es")
+                XCTFail("An unknown question structure must block the entire questionnaire")
+            } catch {
+                XCTAssertEqual(error as? OnboardingError, .updateRequired)
+            }
+        }
+    }
+
+    func testDateTimeQuestionIsAccepted() async throws {
+        let question = """
+        { "id": "when", "type": "date", "prompt": ["When?"],
+          "date": { "mode": "dateTime", "minDate": "2020-01-01", "maxDate": "2030-01-01" } }
+        """
+        let questionnaire = OnboardingFixtures.wrap(
+            sections: OnboardingFixtures.section(id: "s", questions: question)
+        )
+        AuthStubURLProtocol.stub { request in
+            (AuthFixtures.response(request.url!, 200), Data("{\"data\": \(questionnaire)}".utf8))
+        }
+
+        let service = RemoteOnboardingService(baseURL: baseURL, session: AuthStubURLProtocol.makeSession())
+        let fetched = try await service.fetchQuestionnaire(languageCode: "es")
+        XCTAssertEqual(fetched.questionnaire.questions.first?.date?.mode, .dateTime)
+    }
+
+    func testMalformedQuestionnaireRemainsAnInvalidResponseInsteadOfForcingAnUpdate() async throws {
+        let questionnaire = OnboardingFixtures.wrap(
+            sections: OnboardingFixtures.section(id: "s", questions: OnboardingFixtures.gate("a"))
+        ).replacingOccurrences(of: "\"prompt\": [\"a?\"]", with: "\"prompt\": 42")
+        AuthStubURLProtocol.stub { request in
+            (AuthFixtures.response(request.url!, 200), Data("{\"data\": \(questionnaire)}".utf8))
+        }
+
+        let service = RemoteOnboardingService(baseURL: baseURL, session: AuthStubURLProtocol.makeSession())
+        do {
+            _ = try await service.fetchQuestionnaire(languageCode: "es")
+            XCTFail("A malformed response must not open onboarding")
+        } catch {
+            XCTAssertEqual(OnboardingError.from(error), .invalidResponse)
+        }
     }
 
     // MARK: T035 — the authenticated submission
@@ -224,10 +347,13 @@ nonisolated final class OnboardingRequestTests: XCTestCase {
 
         let json = try body(at: 0)
         let consent = try XCTUnwrap(json["consent"] as? [String: Any])
-        XCTAssertEqual(consent["privacyNoticeVersion"] as? String, ConsentReceipt.Version.privacyNotice)
+        XCTAssertEqual(
+            consent["privacyNoticeVersion"] as? String,
+            AuthFixtures.consentConfiguration.privacyNoticeVersion
+        )
         XCTAssertEqual(
             consent["healthDataConsentVersion"] as? String,
-            ConsentReceipt.Version.healthDataConsent
+            AuthFixtures.consentConfiguration.healthDataConsentVersion
         )
         XCTAssertNotNil(consent["grantedAt"], "the receipt says when, not just whether")
         XCTAssertEqual(json["sessionId"] as? String, pending.submission.sessionId.uuidString)

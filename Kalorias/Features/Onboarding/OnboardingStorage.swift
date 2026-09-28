@@ -2,20 +2,9 @@
 //  OnboardingStorage.swift
 //  Kalorias
 //
-//  Everything the onboarding keeps on disk, split by what it is worth to an
-//  attacker: the questionnaire the server sent, and the answers the user gave.
-//
-//  THERE ARE THREE SOURCES FOR THE QUESTIONNAIRE, in this order: the server, the
-//  last good response cached here, and the copy inside the app bundle. The
-//  bundled copy is not belt-and-braces — without it, a first launch with no
-//  signal cannot even begin, and "install the app on the train home" is a
-//  perfectly ordinary thing to do.
-//
-//  THE CACHE IS PUBLIC CONTENT AND STAYS THAT WAY. It is the same questionnaire
-//  every user downloads; encrypting it would only mean a locked phone cannot
-//  open the chat. The draft is the opposite — it holds a date of birth, a
-//  weight, and whatever the user typed about their health — so feature 010 moved
-//  it, and the sealed pending submission, into `ProtectedFileStore`: a separate
+//  Stores the user's answers, never a questionnaire. The draft holds health
+//  data, so feature 010 moved it and the sealed pending submission into
+//  `ProtectedFileStore`: a separate
 //  subdirectory, written atomically with complete file protection (FR-036).
 //
 //  THE DRAFT IS WRITTEN AFTER EVERY ANSWER, not at the end, and the next
@@ -97,8 +86,7 @@ nonisolated struct OnboardingStorage: Sendable {
     /// throw it away one layer above where it was made.
     typealias DraftError = ProtectedFileStore.StoreError
 
-    /// Where the cached questionnaire lives. Application Support rather than
-    /// Caches: content the system may delete to reclaim space is not a fallback.
+    /// Base directory for onboarding's protected answers.
     static func defaultDirectory() -> URL {
         let base = URL.applicationSupportDirectory.appending(path: "Onboarding", directoryHint: .isDirectory)
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
@@ -115,61 +103,18 @@ nonisolated struct OnboardingStorage: Sendable {
 
     let directory: URL
     let protected: ProtectedFileStore
-    let bundle: Bundle
-
     init(
         directory: URL = OnboardingStorage.defaultDirectory(),
-        protectedDirectory: URL? = nil,
-        bundle: Bundle = .main
+        protectedDirectory: URL? = nil
     ) {
         self.directory = directory
         self.protected = ProtectedFileStore(
             directory: protectedDirectory
                 ?? directory.appending(path: "Protected", directoryHint: .isDirectory)
         )
-        self.bundle = bundle
-    }
-
-    private var cachedQuestionnaireURL: URL { directory.appending(path: "questionnaire.json") }
-
-    // MARK: Questionnaire (public content)
-
-    /// Keep the raw bytes, not the decoded value: a future build with a wider
-    /// decoder can read a payload this one only partly understood.
-    func cacheQuestionnaire(_ data: Data) {
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try? data.write(to: cachedQuestionnaireURL, options: .atomic)
-    }
-
-    func cachedQuestionnaire() -> Questionnaire? {
-        guard let data = try? Data(contentsOf: cachedQuestionnaireURL) else { return nil }
-        return Self.decode(data)
-    }
-
-    /// The copy shipped in the app, for the language given.
-    ///
-    /// Falls back to Spanish, not to nothing: half a questionnaire in the wrong
-    /// language still gets the user a plan, and an empty screen does not.
-    func bundledQuestionnaire(languageCode: String) -> Questionnaire? {
-        let candidates = [languageCode, "es"]
-        for code in candidates {
-            guard let url = bundle.url(forResource: "onboarding.\(code)", withExtension: "json"),
-                  let data = try? Data(contentsOf: url),
-                  let questionnaire = Self.decode(data)
-            else { continue }
-            return questionnaire
-        }
-        return nil
-    }
-
-    private static func decode(_ data: Data) -> Questionnaire? {
-        guard let questionnaire = try? JSONDecoder().decode(QuestionnaireEnvelope.self, from: data).data
-        else { return nil }
-        // A cached or bundled payload gets the same version gate as a fresh
-        // one. A cache written by a newer build is exactly the case this
-        // catches.
-        guard questionnaire.schemaVersion <= Questionnaire.supportedSchemaVersion else { return nil }
-        return questionnaire
+        // Previous versions kept public questionnaire bytes here. Retire that
+        // fallback on upgrade; the protected answer draft is left untouched.
+        try? FileManager.default.removeItem(at: directory.appending(path: "questionnaire.json"))
     }
 
     // MARK: Draft (health data)

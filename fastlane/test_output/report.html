@@ -1,0 +1,3581 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Test Results | xcpretty</title>
+    <style type="text/css">
+      body { font-family:Avenir Next, Helvetica Neue, sans-serif; color: #4A4A4A; background-color: #F0F3FB; margin:0;}
+      h1 { font-weight: normal; font-size: 24px; margin: 10px 0 0 0;}
+      h3 { font-weight: normal; margin: 2px; font-size: 1.1em;}
+      header { position: fixed;width: 100%;background: rgba(249, 254, 255, 0.9);margin: 0;padding: 10px;}
+      header:before, header:after { content:""; display:table;}
+      header:after { clear:both;}
+      a:link { color: #A1D761;}
+      footer { clear: both;position: relative;z-index: 10;height: 40px;margin-top: -10px; margin-left:30px; font-size:12px;}
+      table { width:100%; border-collapse: collapse;}
+      tr td:first-child { width:7%}
+      .left { float: left; margin-left:30px;}
+      .right { float: right; margin-right: 40px; margin-top: 0; margin-bottom:0;}
+      .test-suite { margin: 0 0 30px 0;}
+      .test-suite > .heading { font-family:Menlo, Monaco, monospace; font-weight: bold; border-color: #A1D761; background-color: #B8E986; border-width: 1px;}
+      .test-suite.failing > .heading { border-color: #C84F5E; background-color: #E58591;}
+      .test-suite > .heading > .title { margin-top: 4px; margin-left: 10px;}
+      .tests { overflow: scroll;margin: 0 30px 0 60px;}
+      .test, .test-suite > .heading { height: 30px; overflow: hidden; margin: 0 30px;}
+      .test, .test-suite > .heading { border-width: 1px; border-collapse: collapse; border-style: solid; }
+      .test { margin-left: 30px; border-top:none;}
+      .test.failing { border-color: #C84F5E; background-color: #F4DDE0;}
+      .test.passing { border-color: #A1D761;}
+      .test.failing { background-color: #E7A1AA;}
+      .test.passing { background-color: #CAF59F;}
+      .test.failing.odd { background-color: #EEC7CC;}
+      .test.passing.odd { background-color: #E5FBCF;}
+      .details.failing { background-color: #F4DDE0; border: 1px solid #C84F5E;}
+      .details.passing { background-color: #E5F4DC; border: 1px solid #A1D761;}
+      .test .test-detail:last-child { padding-bottom: 8px;}
+      .test .title { float: left; font-size: 0.9em; margin-top: 8px; font-family: Menlo, Monaco, monospace;}
+      .test .time { float: left;margin: 4px 10px 0 20px;}
+      .test-detail { font-family:Menlo, Monaco, monospace; font-size: 0.9em; margin: 5px 0 5px 0px;}
+      .screenshots { height: auto; overflow: hidden; padding: 4px 4px 0 4px; background-color: #B8E986; border: #A1D761; border-width: 0 1px; border-style: solid; }
+      .screenshots.failing { border-color: #C84F5E; background-color: #E58591; }
+      .screenshot { max-height: 60px; float: left; transition: max-height 0.2s; margin: 0 4px 4px 0 }
+      .screenshot.selected { max-height: 568px; }
+      #test-suites { display: inline-block; width: 100%;margin-top:100px;}
+      #segment-bar { margin-top: 10px;margin-left: 14px;float:right;}
+      #segment-bar a:first-child { border-radius: 9px 0 0 9px; border-right: none;}
+      #segment-bar a:last-child { border-radius: 0 9px 9px 0; border-left: none;}
+      #segment-bar > a { color: #565656; border: 2px solid  #7B7B7B; width: 80px; font-weight: bold; display:inline-block;text-align:center; font-weight: normal;}
+      #segment-bar > a.selected { background-color: #979797; color: #F0F3FB;}
+      #counters { float: left;margin: 10px;text-align: right;}
+      #counters h2 { font-size: 16px; font-family: Avenir, sans-serif; font-weight: lighter; display:inline;}
+      #counters .number { font-size: 20px;}
+      #fail-count { color: #D0021B; margin-left:10px;}
+      @media (max-width: 640px) {
+        h1, #counters, #segment-bar { margin: 5px auto; text-align:center;}
+        header, #segment-bar { width: 100%; position: relative; background:none;}
+        .left, .right { float:none; margin:0;}
+        #test-suites { margin-top: 0;}
+        #counters { float:none;}
+      }
+    </style>
+    <script type="text/javascript">
+      var hide = function(element) { element.style.display = 'none';}
+      var show = function(element) { element.style.display = '';}
+      var isHidden = function(element) { return element.style.display == 'none';}
+      var isSelected = function(element) { return element.classList.contains("selected");}
+      var deselect = function(element) { return element.classList.remove("selected");}
+      var select = function(element) { return element.classList.add("selected");}
+      var toggle = function(element) { isHidden(element) ? show(element) : hide(element);};
+      var toggleTests = function(heading) { toggle(heading.parentNode.children[1]);};
+      var toggleDetails = function(detailClass) {
+        var details = document.querySelectorAll('.' + detailClass);
+        for (var i = details.length - 1; i >= 0; i--) { toggle(details[i]);};
+      };
+      var hideAll = function(collection) {
+        for (var i = collection.length - 1; i >= 0; i--) { hide(collection[i]); };
+      }
+      var showAll = function(collection) {
+        for (var i = collection.length - 1; i >= 0; i--) { show(collection[i]); };
+      }
+      var selectSegment = function(segment) {
+        if (isSelected(segment)) return;
+        var segments = document.querySelectorAll('#segment-bar > a');
+        for (var i = segments.length - 1; i >= 0; i--) { deselect(segments[i]);};
+        select(segment);
+        if (segment.id == "all-segment") {
+          showAll(document.querySelectorAll('.test-suite'));
+          showAll(document.querySelectorAll('.test'));
+        } else if (segment.id == "failing-segment") {
+          hideAll(document.querySelectorAll('.test.passing'));
+          showAll(document.querySelectorAll('.test.failing'));
+          hideAll(document.querySelectorAll('.test-suite.passing'));
+          showAll(document.querySelectorAll('.test-suite.failing'));
+        } else if (segment.id == "passing-segment") {
+          hideAll(document.querySelectorAll('.test.failing'));
+          showAll(document.querySelectorAll('.test.passing'));
+          hideAll(document.querySelectorAll('.test-suite.failing'));
+          showAll(document.querySelectorAll('.test-suite.passing'));
+        }
+      }
+      var toggleScreenshot = function(suiteName, index) {
+        var screenshot = document.getElementById("screenshot-" + suiteName + "-" + index);
+        isSelected(screenshot) ? deselect(screenshot) : select(screenshot);
+      }
+    </script>
+  </head>
+  <body>
+    <header>
+      <section class="left">
+        <h1>Test Results</h1>
+      </section>
+      <section class="right">
+        <section id="counters">
+          <h2 id="test-count"><span class="number">289</span> tests</h2>
+          
+        </section>
+        <section id="segment-bar">
+          <a id="all-segment" onclick="selectSegment(this);" class="selected">All</a><a id="failing-segment" onclick="selectSegment(this);">Failing</a><a id="passing-segment" onclick="selectSegment(this);">Passing</a>
+        </section>
+      </section>
+    </header>
+    <section id="test-suites">
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.AccessibilityLabelTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.AccessibilityLabelTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_everyAccessibilityLabel_namesAKeyInTheCatalogue');">
+                <td>
+                  
+                    <h3 class="time">0.060s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_everyAccessibilityLabel_namesAKeyInTheCatalogue</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_everyIconOption_namesAKeyInTheCatalogue');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_everyIconOption_namesAKeyInTheCatalogue</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_everySFSymbolSite_isAudited');">
+                <td>
+                  
+                    <h3 class="time">0.056s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_everySFSymbolSite_isAudited</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_historyAccessibilityUsesLocalizedPurposeAndFrozenValues');">
+                <td>
+                  
+                    <h3 class="time">0.011s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_historyAccessibilityUsesLocalizedPurposeAndFrozenValues</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_noAccessibilityLabel_passesARawIdentifier');">
+                <td>
+                  
+                    <h3 class="time">0.050s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_noAccessibilityLabel_passesARawIdentifier</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.AppMotionTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.AppMotionTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_everyMotionIsDistinct');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_everyMotionIsDistinct</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_everyMotionPairsWithATransition');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_everyMotionPairsWithATransition</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_momentumIsUnderDamped');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_momentumIsUnderDamped</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_pathsAreUnchangedWhenReduceMotionIsOff');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_pathsAreUnchangedWhenReduceMotionIsOff</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_reduceMotion_collapsesEveryMotionToTheSameCrossFade');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_reduceMotion_collapsesEveryMotionToTheSameCrossFade</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_reduceMotion_collapsesEveryPathToAPlainFade');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_reduceMotion_collapsesEveryPathToAPlainFade</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_reduceMotion_replacesEverySpring');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_reduceMotion_replacesEverySpring</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_standardAndMomentum_areDifferentAnimations');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_standardAndMomentum_areDifferentAnimations</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_standardIsTheCriticallyDampedDefault');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_standardIsTheCriticallyDampedDefault</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_subtleIsFasterThanStandardAndDoesNotOvershoot');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_subtleIsFasterThanStandardAndDoesNotOvershoot</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_subtleTravelsNowhere');">
+                <td>
+                  
+                    <h3 class="time">0.011s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_subtleTravelsNowhere</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.AppRouterTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.AppRouterTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_allSheetCasesHaveStableDocumentedIDs');">
+                <td>
+                  
+                    <h3 class="time">0.017s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_allSheetCasesHaveStableDocumentedIDs</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_budgetPromptPresentsOnlyWhileFullyIdle');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_budgetPromptPresentsOnlyWhileFullyIdle</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_continuationOutsidePaywallIsANoOp');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_continuationOutsidePaywallIsANoOp</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_entitlementContinuationQueuesAddUntilDismissalCompletes');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_entitlementContinuationQueuesAddUntilDismissalCompletes</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_historyMonthRouteAppendsTheExactKeyAfterHistory');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_historyMonthRouteAppendsTheExactKeyAfterHistory</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_historyNavigationLeavesCurrentAndPendingSheetsUntouched');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_historyNavigationLeavesCurrentAndPendingSheetsUntouched</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_historyRouteAppendsFromHomeWithoutEntitlementInput');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_historyRouteAppendsFromHomeWithoutEntitlementInput</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_historyRoutesUseStandardPopOrder');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_historyRoutesUseStandardPopOrder</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_initialStateHasNoSheetOrPendingWorkAndEmptyPath');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_initialStateHasNoSheetOrPendingWorkAndEmptyPath</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_openFormPresentsAddAndPresentPaywallPresentsPaywall');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_openFormPresentsAddAndPresentPaywallPresentsPaywall</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_paywallRefusalLeavesNoPendingDestination');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_paywallRefusalLeavesNoPendingDestination</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_presentationDidDismissPromotesPendingExactlyOnce');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_presentationDidDismissPromotesPendingExactlyOnce</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_presentBudgetEditorSetsBudgetWithoutQuotaInput');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_presentBudgetEditorSetsBudgetWithoutQuotaInput</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_presentEditExpenseSetsSheetForThatExpense');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_presentEditExpenseSetsSheetForThatExpense</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_rowAndChartIntentsConvergeOnTheSameMonthRouteIdentity');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_rowAndChartIntentsConvergeOnTheSameMonthRouteIdentity</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_sheetFlowsNeverMutateNavigationPath');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_sheetFlowsNeverMutateNavigationPath</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_userAddPreemptsBudgetPromptAcrossDismissalBoundary');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_userAddPreemptsBudgetPromptAcrossDismissalBoundary</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_waitForEntitlementChangesNoState');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_waitForEntitlementChangesNoState</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.BudgetPromptPolicyTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.BudgetPromptPolicyTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_alreadyAskedUserDuringPresentation_isNeverPrompted');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_alreadyAskedUserDuringPresentation_isNeverPrompted</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_existingUserOnEverySubsequentLaunch_isNotPrompted');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_existingUserOnEverySubsequentLaunch_isNotPrompted</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_existingUserOnFirstLaunchAfterUpdating_isPrompted');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_existingUserOnFirstLaunchAfterUpdating_isPrompted</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_newInstallDuringPresentation_isNeverPrompted');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_newInstallDuringPresentation_isNeverPrompted</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_newInstallStillInTheTour_isNotPrompted');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_newInstallStillInTheTour_isNotPrompted</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_newInstallStillInTheTour_isNotPromptedEvenIfSomehowMarkedAsked');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_newInstallStillInTheTour_isNotPromptedEvenIfSomehowMarkedAsked</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_userHandoffDefersUntilRouterIsFullyIdle');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_userHandoffDefersUntilRouterIsFullyIdle</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_whileUserPresentationIsActive_thePromptIsDeferred');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_whileUserPresentationIsActive_thePromptIsDeferred</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.BudgetStoreTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.BudgetStoreTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_init_withAnUnparseableStoredValue_readsZeroRatherThanCrashing');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_init_withAnUnparseableStoredValue_readsZeroRatherThanCrashing</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_markAsked_doesNotChangeTheAmount');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_markAsked_doesNotChangeTheAmount</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_markAsked_doesNotSetHasBeenSet');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_markAsked_doesNotSetHasBeenSet</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_markAsked_isIdempotentAndPersisted');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_markAsked_isIdempotentAndPersisted</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_newInstall_hasNotSetABudget');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_newInstall_hasNotSetABudget</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_newInstall_readsZeroAndHasNotBeenAsked');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_newInstall_readsZeroAndHasNotBeenAsked</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_parse_emptyInput_isZeroNotAnError');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_parse_emptyInput_isZeroNotAnError</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_parse_polishAndItalianUseTheCommaToo');">
+                <td>
+                  
+                    <h3 class="time">0.008s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_parse_polishAndItalianUseTheCommaToo</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_parse_rejectsANegativeAmount');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_parse_rejectsANegativeAmount</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_parse_rejectsNonNumericInput');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_parse_rejectsNonNumericInput</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_parse_respectsTheLocalesDecimalSeparator');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_parse_respectsTheLocalesDecimalSeparator</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_setBudget_negative_throwsAndSetsNothing');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_setBudget_negative_throwsAndSetsNothing</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_setBudget_negative_throwsAndStoresNothing');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_setBudget_negative_throwsAndStoresNothing</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_setBudget_persistsAndSurvivesAFreshStore');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_setBudget_persistsAndSurvivesAFreshStore</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_setBudget_replacesAPreviousValue');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_setBudget_replacesAPreviousValue</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_setBudget_withDecimals_roundTripsExactly');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_setBudget_withDecimals_roundTripsExactly</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_setBudget_zero_isLegalAndDoesNotCountAsBeingAsked');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_setBudget_zero_isLegalAndDoesNotCountAsBeingAsked</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_setBudgetZero_setsHasBeenSet');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_setBudgetZero_setsHasBeenSet</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_settingThenClearingTheBudget_leavesHasBeenSetTrue');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_settingThenClearingTheBudget_leavesHasBeenSetTrue</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_upgrade_withAPositiveAmount_infersHasBeenSet');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_upgrade_withAPositiveAmount_infersHasBeenSet</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_upgrade_withZeroOrNoAmount_infersNotSet');">
+                <td>
+                  
+                    <h3 class="time">0.004s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_upgrade_withZeroOrNoAmount_infersNotSet</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_upgradeInference_doesNotRunASecondTime');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_upgradeInference_doesNotRunASecondTime</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.ContrastTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.ContrastTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_appPalette_cautionFillIsNeverTreatedAsATextColor');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_appPalette_cautionFillIsNeverTreatedAsATextColor</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_appPalette_everyTextBearingTokenIsLegibleOnBothSurfacesInBothAppearances');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_appPalette_everyTextBearingTokenIsLegibleOnBothSurfacesInBothAppearances</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_contrastingForeground_isLegibleAcrossTheColorCube');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_contrastingForeground_isLegibleAcrossTheColorCube</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_contrastingForeground_isLegibleOnEveryCategorySwatch');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_contrastingForeground_isLegibleOnEveryCategorySwatch</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_contrastingForeground_isLegibleOnHistoricalWorstCases');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_contrastingForeground_isLegibleOnHistoricalWorstCases</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_surfaceRaised_isLegibleAsBrandFillForegroundInBothAppearances');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_surfaceRaised_isLegibleAsBrandFillForegroundInBothAppearances</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.ExpensePaletteTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.ExpensePaletteTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_addedIcons_coverEveryBillCategoryFromFR029');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_addedIcons_coverEveryBillCategoryFromFR029</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_categorySwatches_areWellFormedAndDistinct');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_categorySwatches_areWellFormedAndDistinct</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_defaultIconIsUnchangedAndStillInTheSet');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_defaultIconIsUnchangedAndStillInTheSet</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_everyIconHasAHumanReadableLocalizedName');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_everyIconHasAHumanReadableLocalizedName</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_everyIconResolvesToARealSymbol');">
+                <td>
+                  
+                    <h3 class="time">0.098s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_everyIconResolvesToARealSymbol</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_everyIconThatShippedBeforeThisFeatureIsStillPresent');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_everyIconThatShippedBeforeThisFeatureIsStillPresent</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_iconSet_hasNoDuplicates');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_iconSet_hasNoDuplicates</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_iconSet_hasThirtyIconsInWholeRows');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_iconSet_hasThirtyIconsInWholeRows</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.ExpenseQuotaTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.ExpenseQuotaTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_activeAlwaysOpensTheForm');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_activeAlwaysOpensTheForm</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_addingQuotaModelMigratesLegacyOnDiskStoresAndSeedsExistingRows');">
+                <td>
+                  
+                    <h3 class="time">1.292s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_addingQuotaModelMigratesLegacyOnDiskStoresAndSeedsExistingRows</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_deletingEveryExpenseDoesNotRefundQuotaAcrossReload');">
+                <td>
+                  
+                    <h3 class="time">0.004s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_deletingEveryExpenseDoesNotRefundQuotaAcrossReload</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_existingExpensesSeedTheQuotaExactlyOnce');">
+                <td>
+                  
+                    <h3 class="time">0.007s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_existingExpensesSeedTheQuotaExactlyOnce</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_existingQuotaRowWinsOverLaterLiveExpenseCount');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_existingQuotaRowWinsOverLaterLiveExpenseCount</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_freshContainerCreatesExactlyOneQuotaRowAtZero');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_freshContainerCreatesExactlyOneQuotaRowAtZero</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_invalidNameAndAmountConsumeNothing');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_invalidNameAndAmountConsumeNothing</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_loadingAlwaysWaitsForEntitlement');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_loadingAlwaysWaitsForEntitlement</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_negativeCountIsDefensivelyTreatedAsZero');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_negativeCountIsDefensivelyTreatedAsZero</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_notEntitledOpensBelowLimitAndPresentsPaywallAtTheBoundary');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_notEntitledOpensBelowLimitAndPresentsPaywallAtTheBoundary</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_purgingPriorMonthUnexpectedExpensesDoesNotRefundQuota');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_purgingPriorMonthUnexpectedExpensesDoesNotRefundQuota</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_recordingAfterAnActiveDecisionStillConsumesQuota');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_recordingAfterAnActiveDecisionStillConsumesQuota</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_threeSuccessfulAddsPublishAndPersistCountsOneThroughThree');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_threeSuccessfulAddsPublishAndPersistCountsOneThroughThree</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_updatingAnExpenseDoesNotChangeQuota');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_updatingAnExpenseDoesNotChangeQuota</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.ExpenseStoreKindTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.ExpenseStoreKindTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_addExpense_setsTheMonthOnlyForAnUnexpectedExpense');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_addExpense_setsTheMonthOnlyForAnUnexpectedExpense</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_grouping_excludesAnotherMonthsUnexpectedExpenses');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_grouping_excludesAnotherMonthsUnexpectedExpenses</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_grouping_splitsByKind_andPreservesOrder');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_grouping_splitsByKind_andPreservesOrder</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_grouping_withNoUnexpectedExpenses_leavesTheSecondGroupEmpty');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_grouping_withNoUnexpectedExpenses_leavesTheSecondGroupEmpty</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_grouping_withOnlyUnexpectedExpenses_leavesTheFirstGroupEmpty');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_grouping_withOnlyUnexpectedExpenses_leavesTheFirstGroupEmpty</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_performance_spentAndPurge_stayWithinBudgetAt10kRows');">
+                <td>
+                  
+                    <h3 class="time">0.686s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_performance_spentAndPurge_stayWithinBudgetAt10kRows</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_purge_deletesLastMonthsUnexpectedExpensesOnly');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_purge_deletesLastMonthsUnexpectedExpensesOnly</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_purge_isIdempotent');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_purge_isIdempotent</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_purge_keepsAFutureMonthKey_soAClockMovedBackwardsDeletesNothing');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_purge_keepsAFutureMonthKey_soAClockMovedBackwardsDeletesNothing</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_purge_neverDeletesARecurringExpense');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_purge_neverDeletesARecurringExpense</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_purge_onEmptyStore_isHarmless');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_purge_onEmptyStore_isHarmless</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_purge_survivesAFreshStoreOverTheSameContainer');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_purge_survivesAFreshStoreOverTheSameContainer</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_purge_thenSpent_dropsExactlyTheDeletedAmount');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_purge_thenSpent_dropsExactlyTheDeletedAmount</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_spent_ignoresAnUnexpectedExpenseFromAFutureMonth');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_spent_ignoresAnUnexpectedExpenseFromAFutureMonth</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_spent_onEmptyStore_isZero');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_spent_onEmptyStore_isZero</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_spent_withBothKinds_addsRecurringPlusThisMonthsUnexpected');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_spent_withBothKinds_addsRecurringPlusThisMonthsUnexpected</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_spent_withOnlyRecurringExpenses_sumsThemAll');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_spent_withOnlyRecurringExpenses_sumsThemAll</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_spent_withOnlyUnexpectedExpenses_countsOnlyTheirOwnMonth');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_spent_withOnlyUnexpectedExpenses_countsOnlyTheirOwnMonth</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_updateExpense_changingKindToRecurring_clearsTheMonth');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_updateExpense_changingKindToRecurring_clearsTheMonth</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_updateExpense_changingKindToUnexpected_setsTheMonth');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_updateExpense_changingKindToUnexpected_setsTheMonth</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.ExpenseStoreOrderingTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.ExpenseStoreOrderingTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_addExpense_afterReorder_landsOnTopAndPreservesRelativeOrder');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_addExpense_afterReorder_landsOnTopAndPreservesRelativeOrder</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_deleteExpense_afterReorder_keepsRelativeOrderAndDoesNotRenumber');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_deleteExpense_afterReorder_keepsRelativeOrderAndDoesNotRenumber</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_load_repairsDuplicateIndicesIntroducedAfterTheFirstBackfill');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_load_repairsDuplicateIndicesIntroducedAfterTheFirstBackfill</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_load_withAllZeroSortIndices_reproducesNewestFirstOrderExactly');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_load_withAllZeroSortIndices_reproducesNewestFirstOrderExactly</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_load_withUniqueIndices_doesNotRenumber');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_load_withUniqueIndices_doesNotRenumber</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_moveExpenses_and_loadNormalisation_stayWithinBudgetAt10kRows');">
+                <td>
+                  
+                    <h3 class="time">0.950s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_moveExpenses_and_loadNormalisation_stayWithinBudgetAt10kRows</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_moveExpenses_leavesTotalUnchanged');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_moveExpenses_leavesTotalUnchanged</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_moveExpenses_movingDown_reordersAndKeepsIndicesUnique');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_moveExpenses_movingDown_reordersAndKeepsIndicesUnique</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_moveExpenses_movingUp_reordersAndKeepsIndicesUnique');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_moveExpenses_movingUp_reordersAndKeepsIndicesUnique</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_moveExpenses_neverChangesKindOrMonth');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_moveExpenses_neverChangesKindOrMonth</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_moveExpenses_onEmptyStore_isNoOp');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_moveExpenses_onEmptyStore_isNoOp</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_moveExpenses_orderSurvivesAFreshStoreOverTheSameContainer');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_moveExpenses_orderSurvivesAFreshStoreOverTheSameContainer</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_moveExpenses_toFirstAndToLast_handlesBoundaries');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_moveExpenses_toFirstAndToLast_handlesBoundaries</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_moveExpenses_withinAGroup_survivesAFreshStoreOverTheSameContainer');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_moveExpenses_withinAGroup_survivesAFreshStoreOverTheSameContainer</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_moveExpenses_withinRecurring_leavesTheUnexpectedGroupUntouched');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_moveExpenses_withinRecurring_leavesTheUnexpectedGroupUntouched</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_moveExpenses_withinUnexpected_leavesTheRecurringGroupUntouched');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_moveExpenses_withinUnexpected_leavesTheRecurringGroupUntouched</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_moveExpenses_withOffsetsBeyondTheGroup_isANoOp');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_moveExpenses_withOffsetsBeyondTheGroup_isANoOp</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_moveExpenses_withOutOfRangeInput_leavesStoreUntouched');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_moveExpenses_withOutOfRangeInput_leavesStoreUntouched</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_moveExpenses_withSingleExpense_isHarmless');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_moveExpenses_withSingleExpense_isHarmless</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_updateExpense_doesNotChangePosition');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_updateExpense_doesNotChangePosition</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.ExpenseStoreTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.ExpenseStoreTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_addExpense_appliesDefaultIcon_andNoColor_whenNoneProvided');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_addExpense_appliesDefaultIcon_andNoColor_whenNoneProvided</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_addExpense_rejectsEmptyOrBlankName');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_addExpense_rejectsEmptyOrBlankName</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_addExpense_rejectsZeroNegativeOrNonPositiveAmount');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_addExpense_rejectsZeroNegativeOrNonPositiveAmount</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_addExpense_withColorHex_persistsIt');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_addExpense_withColorHex_persistsIt</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_addExpense_withDetails_trimsAndStoresThem');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_addExpense_withDetails_trimsAndStoresThem</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_addExpense_withoutDetails_storesNil');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_addExpense_withoutDetails_storesNil</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_addExpense_withValidNameAndAmount_addsExpenseAndUpdatesTotal');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_addExpense_withValidNameAndAmount_addsExpenseAndUpdatesTotal</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_addExpense_withWhitespaceOnlyDetails_storesNil');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_addExpense_withWhitespaceOnlyDetails_storesNil</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_deleteExpense_removesMatchingExpense_andDecreasesTotal');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_deleteExpense_removesMatchingExpense_andDecreasesTotal</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_deleteExpense_removingLastExpense_returnsTotalToZero');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_deleteExpense_removingLastExpense_returnsTotalToZero</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_deleteExpense_withUnknownID_doesNothing');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_deleteExpense_withUnknownID_doesNothing</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_performance_quotaBootstrapAndReloadStayWithinLaunchBudgetAtTenThousandExpenses');">
+                <td>
+                  
+                    <h3 class="time">1.011s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_performance_quotaBootstrapAndReloadStayWithinLaunchBudgetAtTenThousandExpenses</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_performance_singleOperations_completeUnder100ms_withTenThousandExpenses');">
+                <td>
+                  
+                    <h3 class="time">0.952s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_performance_singleOperations_completeUnder100ms_withTenThousandExpenses</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_updateExpense_rejectsInvalidValues_leavingOriginalUnchanged');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_updateExpense_rejectsInvalidValues_leavingOriginalUnchanged</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_updateExpense_withColorHexNil_clearsAPreviouslySetColor');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_updateExpense_withColorHexNil_clearsAPreviouslySetColor</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_updateExpense_withNilDetails_clearsAPreviouslySetDescription');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_updateExpense_withNilDetails_clearsAPreviouslySetDescription</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_updateExpense_withUnknownID_doesNothing');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_updateExpense_withUnknownID_doesNothing</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_updateExpense_withValidValues_changesFieldsAndRecalculatesTotal');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_updateExpense_withValidValues_changesFieldsAndRecalculatesTotal</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_updateExpense_withWhitespaceOnlyDetails_clearsTheDescription');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_updateExpense_withWhitespaceOnlyDetails_clearsTheDescription</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.HistoryViewSourceTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.HistoryViewSourceTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_expenseListIsTheSingleTypedHistoryDestinationHost');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_expenseListIsTheSingleTypedHistoryDestinationHost</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_historyRangeFiltersChartAndRowsTogether');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_historyRangeFiltersChartAndRowsTogether</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_historyRowsUseFrozenSnapshotsAndRecordedExpensesOnly');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_historyRowsUseFrozenSnapshotsAndRecordedExpensesOnly</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_historySourcesContainNoMutationAffordances');">
+                <td>
+                  
+                    <h3 class="time">0.004s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_historySourcesContainNoMutationAffordances</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_historyViewRendersStoreStateAndReloadsForArchiveChanges');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_historyViewRendersStoreStateAndReloadsForArchiveChanges</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_monthlySpendingChartUsesNativeChartsAndNativeSelection');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_monthlySpendingChartUsesNativeChartsAndNativeSelection</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.LocalizationCatalogTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.LocalizationCatalogTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_catalogue_parsesAndIsSourcedFromEnglish');">
+                <td>
+                  
+                    <h3 class="time">0.004s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_catalogue_parsesAndIsSourcedFromEnglish</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_everyKey_hasAValueInAllFourLanguages');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_everyKey_hasAValueInAllFourLanguages</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_everyUnit_isMarkedTranslated');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_everyUnit_isMarkedTranslated</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_formatSpecifiersMatchAcrossLanguages');">
+                <td>
+                  
+                    <h3 class="time">0.020s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_formatSpecifiersMatchAcrossLanguages</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_noRetiredKeyRemains');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_noRetiredKeyRemains</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_noValueIsEmptyOrWhitespaceOnly');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_noValueIsEmptyOrWhitespaceOnly</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.MoneyFormatterTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.MoneyFormatterTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_amountThatIsWholeOnlyAfterRounding_printsWithoutDecimals');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_amountThatIsWholeOnlyAfterRounding_printsWithoutDecimals</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_amountThatStaysFractionalAfterRounding_keepsTwoDecimals');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_amountThatStaysFractionalAfterRounding_keepsTwoDecimals</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_currencySymbol_forAnUnusualLocale_stillReturnsSomething');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_currencySymbol_forAnUnusualLocale_stillReturnsSomething</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_currencySymbol_isTheEuroSignForTheAppsCurrency');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_currencySymbol_isTheEuroSignForTheAppsCurrency</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_currencySymbol_resolvesInEveryShippedLocale');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_currencySymbol_resolvesInEveryShippedLocale</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_everyAmountProducesANonEmptyString');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_everyAmountProducesANonEmptyString</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_fractionalAmount_keepsTwoDecimals');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_fractionalAmount_keepsTwoDecimals</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_groupingAppliesToWholeAmountsToo');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_groupingAppliesToWholeAmountsToo</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_localeAlsoDecidesWhenGroupingStarts');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_localeAlsoDecidesWhenGroupingStarts</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_localeDecidesSeparatorsAndSymbolPlacement');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_localeDecidesSeparatorsAndSymbolPlacement</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_symbolPlacement_agreesWithWhatTheFormatterActuallyPrints');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_symbolPlacement_agreesWithWhatTheFormatterActuallyPrints</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_symbolPlacement_isLeadingInEnglishAndTrailingInTheOthers');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_symbolPlacement_isLeadingInEnglishAndTrailingInTheOthers</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_wholeAmount_hasNoDecimals');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_wholeAmount_hasNoDecimals</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.MonthHistoryPresentationTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.MonthHistoryPresentationTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_averageIncludesZeroSpendMonthsAndEmptyHistoryHasNoAverage');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_averageIncludesZeroSpendMonthsAndEmptyHistoryHasNoAverage</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_axisLabelsDependOnAvailableSpaceRatherThanChangingChartData');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_axisLabelsDependOnAvailableSpaceRatherThanChangingChartData</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_chartUsesNewestSixStoredMonthsInChronologicalOrder');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_chartUsesNewestSixStoredMonthsInChronologicalOrder</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_exactDecimalAndStoredZeroAreRetained');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_exactDecimalAndStoredZeroAreRetained</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_historyRangesFilterChartAndListFromTheSameMonths');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_historyRangesFilterChartAndListFromTheSameMonths</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_legacyReconstructedOriginIsDecodedButPresentedAsOrdinary');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_legacyReconstructedOriginIsDecodedButPresentedAsOrdinary</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_manualNoDataFixturesCopyPreviousObservedRecurringRowsAndBudget');">
+                <td>
+                  
+                    <h3 class="time">0.008s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_manualNoDataFixturesCopyPreviousObservedRecurringRowsAndBudget</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_performanceNoDataFixturesReuseRecurringRowsWithoutInventingUnexpectedExpenses');">
+                <td>
+                  
+                    <h3 class="time">0.006s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_performanceNoDataFixturesReuseRecurringRowsWithoutInventingUnexpectedExpenses</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_snapshotRetainsBudgetExpenseOrderAndNoDataOrigin');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_snapshotRetainsBudgetExpenseOrderAndNoDataOrigin</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_visibleMonthsExcludeCurrentAndFutureWithoutChangingInput');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_visibleMonthsExcludeCurrentAndFutureWithoutChangingInput</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_yearBoundaryAndGapHaveOnlyRealCategories');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_yearBoundaryAndGapHaveOnlyRealCategories</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_yearSectionsMarkBoundariesAndKeepNewestMonthFirst');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_yearSectionsMarkBoundariesAndKeepNewestMonthFirst</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_zeroOneAndNonPositiveLimits');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_zeroOneAndNonPositiveLimits</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.MonthHistoryStoreTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.MonthHistoryStoreTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_aFreshStoreBootstrapsToTheCurrentMonthWithNoRecords');">
+                <td>
+                  
+                    <h3 class="time">0.010s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_aFreshStoreBootstrapsToTheCurrentMonthWithNoRecords</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_anAbsentDescriptionAndColourStayAbsent');">
+                <td>
+                  
+                    <h3 class="time">0.008s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_anAbsentDescriptionAndColourStayAbsent</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_anEmptyPlanStillAdvancesTheWatermark');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_anEmptyPlanStillAdvancesTheWatermark</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_aRecordIsUnchangedAfterEveryLiveExpenseIsDeleted');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_aRecordIsUnchangedAfterEveryLiveExpenseIsDeleted</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_bootstrappingAnAlreadyInitialisedStoreChangesNothing');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_bootstrappingAnAlreadyInitialisedStoreChangesNothing</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_committedValuesRoundTripExactly');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_committedValuesRoundTripExactly</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_committingAnAlreadyRecordedMonthLeavesTheOriginalIntact');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_committingAnAlreadyRecordedMonthLeavesTheOriginalIntact</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_commitWritesEveryRecordAndAdvancesTheWatermark');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_commitWritesEveryRecordAndAdvancesTheWatermark</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_emptyNoDataMonthIsPersistedWithItsOrigin');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_emptyNoDataMonthIsPersistedWithItsOrigin</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_failedCommitPreservesCheckpointAndLoadedSnapshots');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_failedCommitPreservesCheckpointAndLoadedSnapshots</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_failedReadStaysDistinctAndRetryTransitionsThroughLoading');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_failedReadStaysDistinctAndRetryTransitionsThroughLoading</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_historyLoadSortsSnapshotsAndDetailUsesLoadedValue');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_historyLoadSortsSnapshotsAndDetailUsesLoadedValue</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_historyLoadStartsIdleAndDistinguishesSuccessfulEmpty');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_historyLoadStartsIdleAndDistinguishesSuccessfulEmpty</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_initCostIsIndependentOfHowMuchHistoryExists');">
+                <td>
+                  
+                    <h3 class="time">0.005s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_initCostIsIndependentOfHowMuchHistoryExists</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_recordedMonthsAreNewestFirstWithExpensesInStoredOrder');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_recordedMonthsAreNewestFirstWithExpensesInStoredOrder</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_sameCheckpointNoRecordCommitPreservesLoadedHistory');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_sameCheckpointNoRecordCommitPreservesLoadedHistory</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_successfulCommitInvalidatesLoadedHistoryAndFreshLoadSeesNewMonth');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_successfulCommitInvalidatesLoadedHistoryAndFreshLoadSeesNewMonth</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_theWatermarkSurvivesANewStoreOverTheSameContainer');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_theWatermarkSurvivesANewStoreOverTheSameContainer</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.MonthRolloverCoordinatorTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.MonthRolloverCoordinatorTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_aClockMovedBackwardsRecordsNothingAndDeletesNothing');">
+                <td>
+                  
+                    <h3 class="time">0.015s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_aClockMovedBackwardsRecordsNothingAndDeletesNothing</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_anUntouchedMonthIsNotRecordedButADeliberateZeroBudgetIs');">
+                <td>
+                  
+                    <h3 class="time">0.007s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_anUntouchedMonthIsNotRecordedButADeliberateZeroBudgetIs</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_changingAnExpensesKindAfterwardsDoesNotRewriteWhatItCountedAs');">
+                <td>
+                  
+                    <h3 class="time">0.011s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_changingAnExpensesKindAfterwardsDoesNotRewriteWhatItCountedAs</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_closingAMonthIsFastEnoughAtScale');">
+                <td>
+                  
+                    <h3 class="time">0.787s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_closingAMonthIsFastEnoughAtScale</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_editingDeletingAndReorderingTheLiveListLeavesTheRecordUntouched');">
+                <td>
+                  
+                    <h3 class="time">0.010s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_editingDeletingAndReorderingTheLiveListLeavesTheRecordUntouched</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_runningRepeatedlyWithinTheSameMonthChangesNothing');">
+                <td>
+                  
+                    <h3 class="time">0.006s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_runningRepeatedlyWithinTheSameMonthChangesNothing</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_threeMonthsAway_producesOneRecordPerElapsedMonth');">
+                <td>
+                  
+                    <h3 class="time">0.005s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_threeMonthsAway_producesOneRecordPerElapsedMonth</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_whenTheArchiveFails_nothingIsPurged');">
+                <td>
+                  
+                    <h3 class="time">0.005s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_whenTheArchiveFails_nothingIsPurged</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_whenTheArchiveSucceeds_theMonthIsRecordedAndThenPurged');">
+                <td>
+                  
+                    <h3 class="time">0.006s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_whenTheArchiveSucceeds_theMonthIsRecordedAndThenPurged</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.MonthRolloverPlannerTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.MonthRolloverPlannerTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_aDeliberateZeroBudgetWithNoExpenses_isRecorded');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_aDeliberateZeroBudgetWithNoExpenses_isRecorded</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_aMonthWithABudgetButNoExpenses_isRecorded');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_aMonthWithABudgetButNoExpenses_isRecorded</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_aMonthWithExpensesButNoBudget_isRecorded');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_aMonthWithExpensesButNoBudget_isRecorded</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_aMonthWithNoExpensesAndNoBudgetEverSet_isNotRecorded');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_aMonthWithNoExpensesAndNoBudgetEverSet_isNotRecorded</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_anAbsurdGap_recordsTheMostRecent120MonthsOnly');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_anAbsurdGap_recordsTheMostRecent120MonthsOnly</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_anAlreadyRecordedMonthIsSkippedButTheCheckpointStillAdvances');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_anAlreadyRecordedMonthIsSkippedButTheCheckpointStillAdvances</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_aVeryLargeGapDoesNotEnumerateEverything');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_aVeryLargeGapDoesNotEnumerateEverything</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_catchUp_appliesTheSameRecurringSnapshotAndBudgetToEveryMonth');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_catchUp_appliesTheSameRecurringSnapshotAndBudgetToEveryMonth</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_catchUp_keepsObservedUnexpectedAndExcludesNoDataUnexpected');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_catchUp_keepsObservedUnexpectedAndExcludesNoDataUnexpected</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_clockMovedBackwards_plansNothingAndDoesNotPurge');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_clockMovedBackwards_plansNothingAndDoesNotPurge</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_eachMonthGetsItsOwnExpenseIdentities');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_eachMonthGetsItsOwnExpenseIdentities</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_elapsedMonths_acrossAYearBoundary');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_elapsedMonths_acrossAYearBoundary</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_elapsedMonths_isCheckpointInclusiveAndCurrentExclusive');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_elapsedMonths_isCheckpointInclusiveAndCurrentExclusive</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_elapsedMonths_whenNothingHasEnded');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_elapsedMonths_whenNothingHasEnded</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_equalSortIndicesKeepTheOrderTheyArrivedIn');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_equalSortIndicesKeepTheOrderTheyArrivedIn</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_nextMonth_rollsOverTheYear');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_nextMonth_rollsOverTheYear</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_noDataMonthRejectsUnexpectedKindInMalformedRecurringInput');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_noDataMonthRejectsUnexpectedKindInMalformedRecurringInput</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_noDataMonthWithOnlyAnUnexpectedInputStillHasAnEmptyRecord');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_noDataMonthWithOnlyAnUnexpectedInputStillHasAnEmptyRecord</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_noDataMonthWithoutExpensesOrBudgetIsStillRecorded');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_noDataMonthWithoutExpensesOrBudgetIsStillRecorded</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_oneElapsedMonthIsObservedForEveryTrigger');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_oneElapsedMonthIsObservedForEveryTrigger</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_recurringAndUnexpectedAreMergedBackIntoListOrder');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_recurringAndUnexpectedAreMergedBackIntoListOrder</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_sameMonth_plansNothingButStillPurges');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_sameMonth_plansNothingButStillPurges</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_severalElapsedMonthsMarkOnlyWhollyMissedMonthsAsNoDataForEveryTrigger');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_severalElapsedMonthsMarkOnlyWhollyMissedMonthsAsNoDataForEveryTrigger</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_skippedOrAlreadyRecordedFirstMonthDoesNotMakeLaterMonthsObserved');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_skippedOrAlreadyRecordedFirstMonthDoesNotMakeLaterMonthsObserved</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_totalSpent_isTheSumOfTheRecordsOwnExpenses');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_totalSpent_isTheSumOfTheRecordsOwnExpenses</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_totalSpent_keepsDecimalsExactly');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_totalSpent_keepsDecimalsExactly</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.MonthStoreTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.MonthStoreTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_currentMonthKey_followsTheGivenCalendarsTimeZone');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_currentMonthKey_followsTheGivenCalendarsTimeZone</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_currentMonthKey_incrementsTheYearAcrossDecember');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_currentMonthKey_incrementsTheYearAcrossDecember</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_currentMonthKey_isYearTimesHundredPlusMonth');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_currentMonthKey_isYearTimesHundredPlusMonth</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_currentMonthKey_padsSingleDigitMonths');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_currentMonthKey_padsSingleDigitMonths</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_currentMonthName_isLocalizedAndCapitalized');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_currentMonthName_isLocalizedAndCapitalized</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_currentMonthName_updatesWithTheMonth');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_currentMonthName_updatesWithTheMonth</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_historyMonthLabelsHandleInvalidKeysWithoutNormalizationOrCrash');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_historyMonthLabelsHandleInvalidKeysWithoutNormalizationOrCrash</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_historyMonthLabelsUseInjectedLocalesAndYears');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_historyMonthLabelsUseInjectedLocalesAndYears</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_monthKeysAreOrderedChronologically');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_monthKeysAreOrderedChronologically</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_refresh_isIdempotentWhenTheMonthHasNotChanged');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_refresh_isIdempotentWhenTheMonthHasNotChanged</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_refresh_picksUpAMonthRollover');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_refresh_picksUpAMonthRollover</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.OnboardingStoreTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.OnboardingStoreTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_completing_isIdempotent');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_completing_isIdempotent</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_completing_setsAndPersistsTheFlag');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_completing_setsAndPersistsTheFlag</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_defaultsToNotCompleted');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_defaultsToNotCompleted</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_existingCompletion_isNeverRevokedByTheExistingUserCheck');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_existingCompletion_isNeverRevokedByTheExistingUserCheck</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_existingUserWithExpenses_isMarkedCompleteWithoutSeeingTheTour');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_existingUserWithExpenses_isMarkedCompleteWithoutSeeingTheTour</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_freshInstallWithNoExpenses_isNotMarkedComplete');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_freshInstallWithNoExpenses_isNotMarkedComplete</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_theFlagIsNeverClearedByTheStore');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_theFlagIsNeverClearedByTheStore</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_twoSuitesDoNotSeeEachOthersFlag');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_twoSuitesDoNotSeeEachOthersFlag</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.SheetPresentationTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.SheetPresentationTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_budgetAmountField_appliesNoSurfaceOfItsOwn');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_budgetAmountField_appliesNoSurfaceOfItsOwn</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_budgetEditorDetent_isDeclaredOnce_withOneDetent');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_budgetEditorDetent_isDeclaredOnce_withOneDetent</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_budgetEditorRoot_fillsTheDetentFromTheTop');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_budgetEditorRoot_fillsTheDetentFromTheTop</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_budgetHeaderScrollsWithExpenseContentInsteadOfFloating');">
+                <td>
+                  
+                    <h3 class="time">0.006s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_budgetHeaderScrollsWithExpenseContentInsteadOfFloating</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_detentDeclarations_areExactlyTheAuditedOnes');">
+                <td>
+                  
+                    <h3 class="time">0.060s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_detentDeclarations_areExactlyTheAuditedOnes</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_expenseFormDetent_isDeclaredOnce_withOneDetent');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_expenseFormDetent_isDeclaredOnce_withOneDetent</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_expenseFormRoot_fillsTheDetentFromTheTop');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_expenseFormRoot_fillsTheDetentFromTheTop</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_expenseSwipeDeletesDirectlyWithoutConfirmationDialog');">
+                <td>
+                  
+                    <h3 class="time">0.006s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_expenseSwipeDeletesDirectlyWithoutConfirmationDialog</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_noSheetRoot_drawsATranslucentSurface');">
+                <td>
+                  
+                    <h3 class="time">0.007s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_noSheetRoot_drawsATranslucentSurface</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_onboardingPage_appliesTheCardAtTheCallSite');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_onboardingPage_appliesTheCardAtTheCallSite</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_paywallDetent_isDeclaredOnceAtItsCallSite_withOneDetent');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_paywallDetent_isDeclaredOnceAtItsCallSite_withOneDetent</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_paywallHasOneAccessibleIconCancellationAction');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_paywallHasOneAccessibleIconCancellationAction</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_paywallPathDoesNotDisableInteractiveDismissal');">
+                <td>
+                  
+                    <h3 class="time">0.003s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_paywallPathDoesNotDisableInteractiveDismissal</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_paywallRoot_fillsTheDetentFromTheTop');">
+                <td>
+                  
+                    <h3 class="time">0.002s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_paywallRoot_fillsTheDetentFromTheTop</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_sheetPresentationSites_areExactlyTheAuditedOnes');">
+                <td>
+                  
+                    <h3 class="time">0.059s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_sheetPresentationSites_areExactlyTheAuditedOnes</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.SubscriptionConfigTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.SubscriptionConfigTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_bundledProduct_offersFreeTrial');">
+                <td>
+                  
+                    <h3 class="time">0.471s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_bundledProduct_offersFreeTrial</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_requestedProductID_existsInStoreKitConfiguration');">
+                <td>
+                  
+                    <h3 class="time">0.009s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_requestedProductID_existsInStoreKitConfiguration</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+        
+        <section class="test-suite passing" id="Mis_GastosTests.SubscriptionStoreTests">
+          <section class="heading" onclick="toggleTests(this);">
+            <h3 class="title">Mis_GastosTests.SubscriptionStoreTests</h3>
+          </section>
+          <section class="tests">
+            <table>
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_bypassStoreReportsActive');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_bypassStoreReportsActive</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_freeTrialKey_mapsOfferPeriodToLocalizationKey');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_freeTrialKey_mapsOfferPeriodToLocalizationKey</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_freshStore_isNotProductUnavailable_beforeLoadResolves');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_freshStore_isNotProductUnavailable_beforeLoadResolves</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_hasEligibleFreeTrial_requiresFreeOfferAndEligibility');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_hasEligibleFreeTrial_requiresFreeOfferAndEligibility</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_nonBypassStoreStartsLoading');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_nonBypassStoreStartsLoading</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_primaryActionKey_requiresExistingEligibleFreeTrial');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_primaryActionKey_requiresExistingEligibleFreeTrial</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_productUnavailable_onlyWhenLoadResolvedWithNoProduct');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_productUnavailable_onlyWhenLoadResolvedWithNoProduct</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_resolveEntitlement_withBypass_alwaysActive');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_resolveEntitlement_withBypass_alwaysActive</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_resolveEntitlement_withoutBypass_returnsRawState');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_resolveEntitlement_withoutBypass_returnsRawState</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing odd"  onclick="toggleDetails('test_restoreResultMessage_setWhenNotEntitled_nilOtherwise');">
+                <td>
+                  
+                    <h3 class="time">0.001s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_restoreResultMessage_setWhenNotEntitled_nilOtherwise</h3></td>
+              </tr>
+              
+            
+              
+              <tr class="test passing "  onclick="toggleDetails('test_subscriptionLengthKey_mapsPeriodToLocalizationKey');">
+                <td>
+                  
+                    <h3 class="time">0.000s</h3>
+                  
+                </td>
+                <td><h3 class="title">test_subscriptionLengthKey_mapsPeriodToLocalizationKey</h3></td>
+              </tr>
+              
+            
+            </table>
+          </section>
+        </section>
+      
+    </section>
+    <footer>Report generated with <a href="https://github.com/supermarin/xcpretty">xcpretty</a></footer>
+  </body>
+</html>

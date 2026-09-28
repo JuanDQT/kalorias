@@ -2,12 +2,11 @@
 //  OnboardingStoreTests.swift
 //  KaloriasTests
 //
-//  The store's three jobs: getting a questionnaire from somewhere, keeping a
+//  The store's three jobs: fetching the questionnaire, keeping a
 //  draft, and sealing the finished answers **on this device**.
 //
-//  THE FALLBACK CHAIN IS THE POINT. A failed fetch is not a failed onboarding —
-//  the cached copy is tried, then the bundled one, and only then does the user
-//  see an error. Getting this wrong means a first launch on a train.
+//  A failed fetch leaves the questionnaire unavailable. Saved answers survive
+//  and resume once the same questionnaire arrives from the backend.
 //
 //  IT NO LONGER SUBMITS, AND THAT IS ASSERTED, NOT ASSUMED (feature 010). The
 //  stub service below has no `submit` at all — the store holds only the fetching
@@ -22,21 +21,16 @@ import XCTest
 
 private nonisolated final class StubService: OnboardingFetching, @unchecked Sendable {
     var questionnaire: Questionnaire?
-    /// The bytes the fetch reports having received, which is what gets cached.
-    var payload = Data("{}".utf8)
     var fetchError: (any Error)?
-    /// How long the fetch takes to answer, for the first-paint deadline.
-    var fetchDelay: Duration = .zero
     /// Every language the fetch was asked for, so a test can assert what the
     /// public request carried — and, by its absence, what it did not.
     private(set) var fetchedLanguages: [String] = []
 
     func fetchQuestionnaire(languageCode: String) async throws -> FetchedQuestionnaire {
         fetchedLanguages.append(languageCode)
-        if fetchDelay > .zero { try await Task.sleep(for: fetchDelay) }
         if let fetchError { throw fetchError }
         guard let questionnaire else { throw OnboardingError.serviceError }
-        return FetchedQuestionnaire(questionnaire: questionnaire, payload: payload)
+        return FetchedQuestionnaire(questionnaire: questionnaire)
     }
 }
 
@@ -64,23 +58,19 @@ nonisolated final class OnboardingStoreTests: XCTestCase {
     private var seals: SealBox!
 
     @MainActor
-    private func makeStore(
-        _ service: StubService,
-        deadline: Duration = .milliseconds(50)
-    ) -> OnboardingStore {
+    private func makeStore(_ service: StubService) -> OnboardingStore {
         let box = seals!
         return OnboardingStore(
             service: service,
             storage: storage(),
             pendingStorage: pendingStorage(),
             languageCode: "es",
-            firstPaintDeadline: deadline,
             onSealed: { box.sealed.append($0) }
         )
     }
 
     private func storage() -> OnboardingStorage {
-        OnboardingStorage(directory: directory, bundle: .main)
+        OnboardingStorage(directory: directory)
     }
 
     private func pendingStorage() -> PendingOnboardingStorage {
@@ -116,85 +106,56 @@ nonisolated final class OnboardingStoreTests: XCTestCase {
     }
 
     @MainActor
-    func testAFailedFetchFallsBackToTheBundledCopy() async throws {
+    func testAFailedFetchShowsAnErrorEvenWhenALegacyCacheExists() async throws {
+        let questionnaire = OnboardingFixtures.wrap(
+            sections: OnboardingFixtures.section(id: "s", questions: OnboardingFixtures.gate("a"))
+        )
+        try Data("{\"data\": \(questionnaire)}".utf8).write(
+            to: directory.appending(path: "questionnaire.json")
+        )
         let service = StubService()
         service.fetchError = OnboardingError.noConnection
         let store = makeStore(service)
 
         await store.load()
 
-        XCTAssertEqual(store.state, .asking, "no network is not a dead end")
-        XCTAssertEqual(store.flow?.questionnaire.onboardingId, "plan_v1", "the real bundled questionnaire")
+        XCTAssertEqual(store.state, .failed(.noConnection))
+        XCTAssertNil(store.flow)
+        XCTAssertEqual(service.fetchedLanguages, ["es"])
+        XCTAssertFalse(FileManager.default.fileExists(
+            atPath: directory.appending(path: "questionnaire.json").path
+        ))
     }
 
     @MainActor
-    func testACachedCopyIsPreferredOverTheBundledOne() async throws {
-        // Seeded with the bytes the network would have written, not with a
-        // re-encoded model: the app only ever caches what it received, and a
-        // synthesised encoder would not produce the same keys the decoder reads.
-        let payload = OnboardingFixtures.wrap(
-            sections: OnboardingFixtures.section(id: "s", questions: OnboardingFixtures.gate("a"))
-        )
-        storage().cacheQuestionnaire(Data("{\"data\": \(payload)}".utf8))
-
+    func testRetryLoadsTheQuestionnaireAfterANetworkFailure() async throws {
         let service = StubService()
         service.fetchError = OnboardingError.timeout
+        let store = makeStore(service)
+        await store.load()
+        XCTAssertEqual(store.state, .failed(.timeout))
+
+        service.fetchError = nil
+        service.questionnaire = try twoQuestionQuestionnaire()
+        await store.load()
+
+        XCTAssertEqual(store.state, .asking)
+        XCTAssertEqual(store.flow?.questionnaire.onboardingId, "test_v1")
+        XCTAssertEqual(service.fetchedLanguages, ["es", "es"])
+    }
+
+    @MainActor
+    func testAnIncompatibleQuestionnaireBlocksLoadingAndCannotBeRetried() async throws {
+        let service = StubService()
+        service.fetchError = OnboardingError.updateRequired
         let store = makeStore(service)
 
         await store.load()
 
-        XCTAssertEqual(store.flow?.questionnaire.onboardingId, "test_v1")
-    }
-
-    /// The cache had no writer at all until the app was actually run: the
-    /// service handed back a decoded value, so there were never any bytes to
-    /// store, and the fallback below could only ever reach the bundled copy.
-    @MainActor
-    func testAFetchedQuestionnaireIsCachedForNextTime() async throws {
-        let payload = OnboardingFixtures.wrap(
-            sections: OnboardingFixtures.section(id: "s", questions: OnboardingFixtures.gate("a"))
-        )
-        let service = StubService()
-        service.questionnaire = try twoQuestionQuestionnaire()
-        service.payload = Data("{\"data\": \(payload)}".utf8)
-
-        await makeStore(service).load()
-
-        XCTAssertNotNil(storage().cachedQuestionnaire(), "the bytes the server sent are kept")
-    }
-
-    /// A build pointing at a server that is not up must not hold the app's very
-    /// first screen on a blank spinner for the whole request timeout.
-    @MainActor
-    func testASlowServerDoesNotHoldTheFirstPaint() async throws {
-        let service = StubService()
-        service.questionnaire = try twoQuestionQuestionnaire()
-        service.fetchDelay = .seconds(30)
-
-        let store = makeStore(service, deadline: .milliseconds(20))
+        XCTAssertEqual(store.state, .updateRequired)
+        XCTAssertNil(store.flow)
         await store.load()
-
-        XCTAssertEqual(store.state, .asking, "the chat opened without waiting")
-        XCTAssertEqual(store.flow?.questionnaire.onboardingId, "plan_v1", "on the bundled copy")
-    }
-
-    /// And the background refresh updates the cache without disturbing the flow
-    /// the user is already in.
-    @MainActor
-    func testTheBackgroundRefreshNeverSwapsTheRunningQuestionnaire() async throws {
-        let service = StubService()
-        service.questionnaire = try twoQuestionQuestionnaire()
-        service.fetchDelay = .seconds(30)
-        let store = makeStore(service, deadline: .milliseconds(20))
-        await store.load()
-        let opened = store.flow?.questionnaire.onboardingId
-
-        service.fetchDelay = .zero
-        service.payload = Data("{\"data\": \(OnboardingFixtures.wrap(sections: OnboardingFixtures.section(id: "s", questions: OnboardingFixtures.gate("a"))))}".utf8)
-        await store.refreshCacheInBackground()
-
-        XCTAssertEqual(store.flow?.questionnaire.onboardingId, opened, "the chat did not change underneath")
-        XCTAssertNotNil(storage().cachedQuestionnaire(), "but next launch gets the new one")
+        XCTAssertEqual(service.fetchedLanguages, ["es"])
     }
 
     // MARK: Drafts
@@ -213,6 +174,86 @@ nonisolated final class OnboardingStoreTests: XCTestCase {
 
         XCTAssertEqual(second.flow?.answers["a"], .single(optionId: "yes"))
         XCTAssertEqual(second.flow?.currentQuestion?.id, "b")
+    }
+
+    @MainActor
+    func testDateTimeAnswerSurvivesARelaunchWithItsOriginalZone() async throws {
+        let service = StubService()
+        let dateQuestion = """
+        { "id": "appointment", "type": "date", "prompt": ["When?"],
+          "date": { "mode": "dateTime", "minDate": "2020-01-01", "maxDate": "2030-01-01" } }
+        """
+        service.questionnaire = try OnboardingFixtures.questionnaire(
+            OnboardingFixtures.wrap(
+                sections: OnboardingFixtures.section(
+                    id: "s",
+                    questions: [OnboardingFixtures.gate("a"), dateQuestion, OnboardingFixtures.text("b")]
+                        .joined(separator: ",")
+                )
+            )
+        )
+        let instant = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-07-01T12:45:00Z"))
+        let zone = try XCTUnwrap(TimeZone(identifier: "Europe/Madrid"))
+        let answer = DateTimeAnswer(instant: instant, timeZone: zone)
+
+        let first = makeStore(service)
+        await first.load()
+        await first.answer(.single(optionId: "yes"), for: "a")
+        await first.answer(.dateTime(answer), for: "appointment")
+
+        let second = makeStore(service)
+        await second.load()
+
+        XCTAssertEqual(second.flow?.answers["appointment"], .dateTime(answer))
+        XCTAssertEqual(second.flow?.currentQuestion?.id, "b")
+    }
+
+    @MainActor
+    func testSavedAnswersSurviveAnOfflineRelaunchAndResumeAfterFetch() async throws {
+        let service = StubService()
+        service.questionnaire = try twoQuestionQuestionnaire()
+        let first = makeStore(service)
+        await first.load()
+        await first.answer(.single(optionId: "yes"), for: "a")
+        let savedDraft = try await storage().draft()
+        let savedSession = try XCTUnwrap(savedDraft?.sessionId)
+
+        service.fetchError = OnboardingError.noConnection
+        let second = makeStore(service)
+        await second.load()
+        XCTAssertEqual(second.state, .failed(.noConnection))
+        XCTAssertNil(second.flow)
+        let draftDuringOutage = try await storage().draft()
+        XCTAssertEqual(draftDuringOutage?.sessionId, savedSession)
+
+        service.fetchError = nil
+        await second.load()
+        XCTAssertEqual(second.flow?.answers["a"], .single(optionId: "yes"))
+        XCTAssertEqual(second.flow?.currentQuestion?.id, "b")
+        let resumedDraft = try await storage().draft()
+        XCTAssertEqual(resumedDraft?.sessionId, savedSession)
+    }
+
+    @MainActor
+    func testUpdateRequiredPreservesSavedAnswersWithoutOpeningTheOldFlow() async throws {
+        let service = StubService()
+        service.questionnaire = try twoQuestionQuestionnaire()
+        let first = makeStore(service)
+        await first.load()
+        await first.answer(.single(optionId: "yes"), for: "a")
+        let originalDraftValue = try await storage().draft()
+        let originalDraft = try XCTUnwrap(originalDraftValue)
+
+        service.fetchError = OnboardingError.unsupportedSchema(version: 2)
+        let second = makeStore(service)
+        await second.load()
+
+        XCTAssertEqual(second.state, .updateRequired)
+        XCTAssertNil(second.flow)
+        let savedDraftValue = try await storage().draft()
+        let savedDraft = try XCTUnwrap(savedDraftValue)
+        XCTAssertEqual(savedDraft.sessionId, originalDraft.sessionId)
+        XCTAssertEqual(savedDraft.answers["a"], .single(optionId: "yes"))
     }
 
     /// A draft is pinned to the content it was answered against. Replaying it

@@ -101,7 +101,8 @@ struct JourneyLaunchFixture {
             credentialState: FixtureCredentialStateChecker(),
             onboardingStorage: OnboardingStorage(directory: directory),
             pendingStorage: pendingStorage,
-            localData: localData
+            localData: localData,
+            consentConfiguration: BackendEnvironment.consentConfiguration
         )
     }
 
@@ -209,7 +210,11 @@ struct JourneyLaunchFixture {
                 completedAt: Date(),
                 answers: []
             ),
-            consent: consented ? ConsentReceipt(grantedAt: Date()) : nil
+            consent: consented
+                ? BackendEnvironment.consentConfiguration.map {
+                    ConsentReceipt(configuration: $0, grantedAt: Date())
+                }
+                : nil
         )
     }
 }

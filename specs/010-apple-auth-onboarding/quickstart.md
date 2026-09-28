@@ -107,7 +107,9 @@ Use a staging account and inspect both client proxy traffic and redacted backend
 
 | Case | Procedure | Expected result |
 |---|---|---|
-| New offline onboarding | Disable network after valid bundle/cache is present; answer all questions | Reaches Access; no answer/profile request occurred |
+| Backend unavailable | Disable network before loading onboarding | Retryable questionnaire error; no cached/bundled questions; saved answers remain intact |
+| Questionnaire incompatible | Return a higher schema version or unknown question type | Mandatory update gate before any question; no retry or stale questionnaire path |
+| Date and time | Serve a `date` question with `mode: dateTime`, answer it, relaunch and submit | Same local wall time and zone resume; payload contains RFC 3339 offset plus IANA `timeZone` |
 | Mid-draft termination | Kill after several answers and relaunch | Same session/version/answers and correct next question resume |
 | Final-answer boundary | Accept final answer, kill during transition, relaunch | Complete protected pending payload exists; Access is shown |
 | Apple cancellation | Cancel native sheet | Access remains; every answer stays local; no backend auth request if no credential |
@@ -147,8 +149,8 @@ Inspect app persistence on a development device/simulator:
 
 - `UserDefaults` has no completion authority, tokens, Apple identifier, answers, or consent receipt.
 - Keychain items use `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` and are not synchronizable.
-- Draft/pending and saved meal images have complete file protection; questionnaire cache contains no
-  user data.
+- Draft/pending and saved meal images have complete file protection; no questionnaire cache or
+  bundled questionnaire exists.
 - Owner-filtered SwiftData queries do not materialize another user's or legacy unowned rows.
 
 ## UX, Localization, and Accessibility Pass

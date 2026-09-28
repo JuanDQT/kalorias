@@ -83,7 +83,7 @@ private nonisolated final class SilentQuestionnaireService: OnboardingFetching, 
 
     func fetchQuestionnaire(languageCode: String) async throws -> FetchedQuestionnaire {
         guard let questionnaire else { throw OnboardingError.serviceError }
-        return FetchedQuestionnaire(questionnaire: questionnaire, payload: Data("{}".utf8))
+        return FetchedQuestionnaire(questionnaire: questionnaire)
     }
 }
 
@@ -130,7 +130,8 @@ nonisolated final class AppJourneyStoreTests: XCTestCase {
         knownAccount: KnownAccount? = nil,
         deletionAttempt: AccountDeletionAttempt? = nil,
         credentialState: AppleCredentialState = .authorized,
-        keychainFailure: (any Error)? = nil
+        keychainFailure: (any Error)? = nil,
+        consentConfiguration: ConsentConfiguration? = AuthFixtures.consentConfiguration
     ) -> Harness {
         let inner = InMemoryCredentialStore(
             session: session,
@@ -143,7 +144,7 @@ nonisolated final class AppJourneyStoreTests: XCTestCase {
         let submissions = StubSubmissionService()
         let state = StubCredentialStateChecker(state: credentialState)
         let localData = SpyLocalDataClearer()
-        let onboardingStorage = OnboardingStorage(directory: directory, bundle: .main)
+        let onboardingStorage = OnboardingStorage(directory: directory)
         let pendingStorage = PendingOnboardingStorage(directory: protectedDirectory)
 
         let store = AppJourneyStore(
@@ -154,7 +155,8 @@ nonisolated final class AppJourneyStoreTests: XCTestCase {
             credentialState: state,
             onboardingStorage: onboardingStorage,
             pendingStorage: pendingStorage,
-            localData: localData
+            localData: localData,
+            consentConfiguration: consentConfiguration
         )
         return Harness(
             store: store,
@@ -175,7 +177,7 @@ nonisolated final class AppJourneyStoreTests: XCTestCase {
     }
 
     private func writeDraft() async throws {
-        try await OnboardingStorage(directory: directory, bundle: .main).save(
+        try await OnboardingStorage(directory: directory).save(
             OnboardingDraft(
                 sessionId: UUID(),
                 onboardingId: "plan_v1",
@@ -442,7 +444,6 @@ nonisolated final class AppJourneyStoreTests: XCTestCase {
             storage: harness.onboardingStorage,
             pendingStorage: harness.pendingStorage,
             languageCode: "es",
-            firstPaintDeadline: .milliseconds(50),
             onSealed: { journey.onboardingDidSeal($0) }
         )
         await onboarding.load()
@@ -477,7 +478,6 @@ nonisolated final class AppJourneyStoreTests: XCTestCase {
             storage: harness.onboardingStorage,
             pendingStorage: PendingOnboardingStorage(directory: blocked),
             languageCode: "es",
-            firstPaintDeadline: .milliseconds(50),
             onSealed: { journey.onboardingDidSeal($0) }
         )
         await onboarding.load()
@@ -565,7 +565,58 @@ nonisolated final class AppJourneyStoreTests: XCTestCase {
                        "the status is durable before the local files are removed")
     }
 
+    @MainActor
+    func testAppleRateLimitBlocksAnotherExchangeUntilRetryAfter() async throws {
+        _ = try await writePending(consented: false)
+        let harness = makeHarness()
+        await harness.store.bootstrap()
+        harness.auth.authenticateResult = .failure(AuthError.rateLimited(retryAfter: 20))
+
+        await harness.store.signIn(with: AuthFixtures.appleCredential())
+        await harness.store.signIn(with: AuthFixtures.appleCredential())
+
+        XCTAssertEqual(harness.auth.authenticateCalls.count, 1)
+        XCTAssertNotNil(harness.store.accessSecondsUntilRetry)
+        XCTAssertEqual(harness.store.accessError, .rateLimited(retryAfter: 20))
+    }
+
     // MARK: - T049: relaunch at each boundary
+
+    @MainActor
+    func testMissingLegalConfigurationCannotMintAReceiptOrUploadAnswers() async throws {
+        _ = try await writePending(consented: false)
+        let harness = makeHarness(
+            session: AuthFixtures.session(onboardingStatus: .required),
+            consentConfiguration: nil
+        )
+        await harness.store.bootstrap()
+
+        await harness.store.acceptHealthDataConsent()
+
+        XCTAssertEqual(harness.store.consentError, .notConfigured)
+        XCTAssertNil(harness.store.pending?.consent)
+        XCTAssertTrue(harness.submissions.submissions.isEmpty)
+        XCTAssertEqual(harness.store.phase, .consent)
+    }
+
+    @MainActor
+    func testConsentReceiptUsesTheExactConfiguredVersions() async throws {
+        _ = try await writePending(consented: false)
+        let harness = makeHarness(session: AuthFixtures.session(onboardingStatus: .required))
+        await harness.store.bootstrap()
+
+        await harness.store.acceptHealthDataConsent()
+
+        let sent = try XCTUnwrap(harness.submissions.submissions.first?.consent)
+        XCTAssertEqual(
+            sent.privacyNoticeVersion,
+            AuthFixtures.consentConfiguration.privacyNoticeVersion
+        )
+        XCTAssertEqual(
+            sent.healthDataConsentVersion,
+            AuthFixtures.consentConfiguration.healthDataConsentVersion
+        )
+    }
 
     /// Before Apple: answers sealed, no account. The chat is not restarted and
     /// no account is created on the user's behalf.
@@ -688,6 +739,47 @@ nonisolated final class AppJourneyStoreTests: XCTestCase {
         XCTAssertEqual(harness.credentials.storedSession?.onboardingStatus, .required)
     }
 
+    // MARK: - Account actions from the backend handoff
+
+    @MainActor
+    func testConfirmedLogoutClearsOnlyTheLiveSessionAndReturnsToAccess() async throws {
+        let live = AuthFixtures.session(
+            accessExpiry: Date().addingTimeInterval(3_600),
+            refreshExpiry: Date().addingTimeInterval(86_400),
+            onboardingStatus: .complete
+        )
+        let harness = makeHarness(session: live)
+        await harness.store.bootstrap()
+
+        await harness.store.logout()
+
+        XCTAssertEqual(harness.auth.logoutCalls, 1)
+        XCTAssertNil(harness.credentials.storedSession)
+        XCTAssertNotNil(harness.credentials.storedKnownAccount, "logout is not account deletion")
+        XCTAssertEqual(harness.localData.clearedOwners, [live.userId])
+        XCTAssertNil(harness.store.activeUserID)
+        XCTAssertEqual(harness.store.phase, .access)
+    }
+
+    @MainActor
+    func testUnconfirmedLogoutPreservesSessionAndAuthenticatedState() async throws {
+        let live = AuthFixtures.session(
+            accessExpiry: Date().addingTimeInterval(3_600),
+            refreshExpiry: Date().addingTimeInterval(86_400),
+            onboardingStatus: .complete
+        )
+        let harness = makeHarness(session: live)
+        harness.auth.logoutResult = .failure(AuthError.serviceUnavailable)
+        await harness.store.bootstrap()
+
+        await harness.store.logout()
+
+        XCTAssertEqual(harness.store.logoutError, .serviceUnavailable)
+        XCTAssertEqual(harness.credentials.storedSession, live)
+        XCTAssertEqual(harness.store.activeUserID, live.userId)
+        XCTAssertEqual(harness.store.phase, .ready)
+    }
+
     // MARK: - T064: account deletion
 
     @MainActor
@@ -708,6 +800,70 @@ nonisolated final class AppJourneyStoreTests: XCTestCase {
             harness.credentials.log.contains("deleteSession"),
             "an outage is not a deletion: nothing is removed until the server says 204"
         )
+    }
+
+    @MainActor
+    func testDeletionRateLimitBlocksAnImmediateRetry() async throws {
+        let harness = makeHarness(session: AuthFixtures.session(onboardingStatus: .complete))
+        harness.auth.deleteResult = .failure(AuthError.rateLimited(retryAfter: 20))
+        await harness.store.bootstrap()
+
+        await harness.store.confirmAccountDeletion()
+        await harness.store.retryAccountDeletion()
+
+        XCTAssertEqual(harness.auth.deleteCalls.count, 1)
+        XCTAssertNotNil(harness.store.deletionSecondsUntilRetry)
+        XCTAssertEqual(harness.store.deletionError, .rateLimited(retryAfter: 20))
+        XCTAssertNotNil(harness.credentials.storedDeletionAttempt)
+    }
+
+    @MainActor
+    func testDeletionAuthenticationFailureRefreshesOnceAndRestartsTheOperation() async throws {
+        let live = AuthFixtures.session(
+            accessExpiry: Date().addingTimeInterval(3_600),
+            refreshExpiry: Date().addingTimeInterval(86_400),
+            onboardingStatus: .complete
+        )
+        let harness = makeHarness(session: live)
+        harness.auth.refreshResult = .success(AuthFixtures.credentials())
+        harness.auth.deleteResults = [
+            .failure(AuthError.refreshRejected),
+            .success(()),
+        ]
+        await harness.store.bootstrap()
+
+        await harness.store.confirmAccountDeletion()
+
+        XCTAssertEqual(harness.auth.refreshCalls, [live.refreshToken])
+        XCTAssertEqual(harness.auth.deleteCalls.map(\.token), [live.accessToken, "access-2"])
+        XCTAssertNotEqual(
+            harness.auth.deleteCalls[0].operationId,
+            harness.auth.deleteCalls[1].operationId
+        )
+        XCTAssertEqual(harness.store.phase, .onboarding)
+    }
+
+    @MainActor
+    func testSecondDeletionAuthenticationFailureRequiresApple() async throws {
+        let live = AuthFixtures.session(
+            accessExpiry: Date().addingTimeInterval(3_600),
+            refreshExpiry: Date().addingTimeInterval(86_400),
+            onboardingStatus: .complete
+        )
+        let harness = makeHarness(session: live)
+        harness.auth.refreshResult = .success(AuthFixtures.credentials())
+        harness.auth.deleteResults = [
+            .failure(AuthError.refreshRejected),
+            .failure(AuthError.refreshRejected),
+        ]
+        await harness.store.bootstrap()
+
+        await harness.store.confirmAccountDeletion()
+
+        XCTAssertEqual(harness.auth.deleteCalls.count, 2)
+        XCTAssertEqual(harness.store.deletionError, .reauthenticationRequired)
+        XCTAssertEqual(harness.store.phase, .deletingAccount)
+        XCTAssertNotNil(harness.credentials.storedDeletionAttempt)
     }
 
     /// The cleanup order from the data model, asserted as an order: the owner's
@@ -769,5 +925,58 @@ nonisolated final class AppJourneyStoreTests: XCTestCase {
         XCTAssertEqual(harness.auth.deleteCalls[0].operationId, attempt.operationId)
         XCTAssertEqual(harness.auth.deleteCalls[0].token, attempt.presentedAccessToken)
         XCTAssertEqual(harness.store.phase, .onboarding)
+    }
+
+    @MainActor
+    func testDeletionReauthenticationRestartsWithANewBearerAndOperationKey() async throws {
+        let harness = makeHarness(session: AuthFixtures.session(onboardingStatus: .complete))
+        harness.auth.deleteResult = .failure(AuthError.reauthenticationRequired)
+        await harness.store.bootstrap()
+
+        await harness.store.confirmAccountDeletion()
+
+        let original = try XCTUnwrap(harness.credentials.storedDeletionAttempt)
+        XCTAssertEqual(harness.store.deletionError, .reauthenticationRequired)
+
+        harness.auth.authenticateResult = .success(
+            AuthFixtures.authResponse(
+                userId: original.ownerUserID,
+                status: .complete,
+                accessToken: "access-reauth",
+                refreshToken: "refresh-reauth"
+            )
+        )
+        harness.auth.deleteResult = .success(())
+        await harness.store.reauthenticateAccountDeletion(
+            with: AuthFixtures.appleCredential()
+        )
+
+        XCTAssertEqual(harness.auth.authenticateCalls.count, 1)
+        XCTAssertEqual(harness.auth.deleteCalls.count, 2)
+        XCTAssertEqual(harness.auth.deleteCalls[1].token, "access-reauth")
+        XCTAssertNotEqual(harness.auth.deleteCalls[1].operationId, original.operationId)
+        XCTAssertEqual(harness.store.phase, .onboarding)
+        XCTAssertNil(harness.credentials.storedDeletionAttempt)
+    }
+
+    @MainActor
+    func testDeletionReauthenticationRefusesADifferentKaloriasUser() async throws {
+        let harness = makeHarness(session: AuthFixtures.session(onboardingStatus: .complete))
+        harness.auth.deleteResult = .failure(AuthError.reauthenticationRequired)
+        await harness.store.bootstrap()
+        await harness.store.confirmAccountDeletion()
+        let original = try XCTUnwrap(harness.credentials.storedDeletionAttempt)
+
+        harness.auth.authenticateResult = .success(
+            AuthFixtures.authResponse(userId: "different-user", status: .complete)
+        )
+        await harness.store.reauthenticateAccountDeletion(
+            with: AuthFixtures.appleCredential(appleUserIdentifier: "different-apple-sub")
+        )
+
+        XCTAssertEqual(harness.store.deletionError, .invalidAppleCredential)
+        XCTAssertEqual(harness.auth.deleteCalls.count, 1, "the other account is never sent to deletion")
+        XCTAssertEqual(harness.credentials.storedDeletionAttempt, original)
+        XCTAssertEqual(harness.store.phase, .deletingAccount)
     }
 }

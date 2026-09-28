@@ -105,6 +105,11 @@ nonisolated final class AuthenticatedHTTPClient: Sendable {
 
         let (data, http) = try await perform(request, bearer: token)
         guard http.statusCode == 401, allowsReplay else { return (data, http) }
+        AuthLog.failure(
+            .authenticatedRequest,
+            outcome: "authenticationRequired",
+            requestId: http.value(forHTTPHeaderField: "X-Request-Id")
+        )
 
         // Exactly one refresh, shared with any other caller that hit the same
         // wall at the same moment.
@@ -121,6 +126,11 @@ nonisolated final class AuthenticatedHTTPClient: Sendable {
 
         let (replayData, replayHTTP) = try await perform(request, bearer: refreshed)
         if replayHTTP.statusCode == 401 {
+            AuthLog.failure(
+                .authenticatedRequest,
+                outcome: "authenticationRequiredAfterRefresh",
+                requestId: replayHTTP.value(forHTTPHeaderField: "X-Request-Id")
+            )
             // The token is fresh and the server still refuses it. Retrying again
             // would be a loop; this session is over.
             await sessions.endSession()

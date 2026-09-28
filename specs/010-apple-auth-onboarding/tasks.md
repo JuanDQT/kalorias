@@ -83,7 +83,7 @@ user story depends on.
 
 ### Protected onboarding storage
 
-- [X] T014 Split `Kalorias/Features/Onboarding/OnboardingStorage.swift` into a non-sensitive questionnaire cache path and a protected draft path, moving the draft to `ProtectedFileStore` while keeping `sessionId`, `contentVersion` and `startedAt` immutable across resume (depends on T006)
+- [X] T014 Split `Kalorias/Features/Onboarding/OnboardingStorage.swift` into a non-sensitive questionnaire cache path and a protected draft path, moving the draft to `ProtectedFileStore` while keeping `sessionId`, `contentVersion` and `startedAt` immutable across resume (depends on T006; questionnaire-cache portion superseded by Phase 8)
 - [X] T015 Create `Kalorias/Features/Onboarding/PendingOnboardingStorage.swift` with atomic protected read/write/delete of `PendingOnboarding`, a consent-update operation, and idempotent cleanup (depends on T006, T011)
 - [X] T016 Create `KaloriasTests/PendingOnboardingStorageTests.swift` covering atomic round trip, consent update, corruption surfaced as a recoverable error, file-protection attributes, restart recovery and repeated cleanup, and register it in `Kalorias.xcodeproj/project.pbxproj` (depends on T015)
 
@@ -119,13 +119,13 @@ before registration.
 
 - [X] T025 [US1] Split `Kalorias/Features/Onboarding/OnboardingProviding.swift` into a public `OnboardingFetching` capability and a separate authenticated `OnboardingSubmitting` capability so a public fetch cannot carry a draft or account identity
 - [X] T026 [US1] Remove the submission call from the final intent of `Kalorias/Features/Onboarding/OnboardingStore.swift`, replacing it with sealing an immutable `PendingOnboarding`, writing it, and only then reporting local completion (depends on T015, T025)
-- [X] T027 [US1] Update `Kalorias/Features/Onboarding/RemoteOnboardingService.swift` so `GET /api/v1/kalorias/onboarding?stage=onboarding` remains anonymous with unchanged `ETag`/`304`/bundled-fallback behavior and sends no `Authorization`, user, device or analytics identity (depends on T025)
+- [X] T027 [US1] Update `Kalorias/Features/Onboarding/RemoteOnboardingService.swift` so `GET /api/v1/kalorias/onboarding?stage=onboarding` remains anonymous with unchanged `ETag`/`304`/bundled-fallback behavior and sends no `Authorization`, user, device or analytics identity (depends on T025; cache/fallback portion superseded by Phase 8)
 - [X] T028 [US1] Add a localized storage-failure path to `Kalorias/Features/Onboarding/OnboardingChatView.swift` that distinguishes "could not save on this device" from a network failure and does not advance the question (depends on T026)
 - [X] T029 [US1] Create `Kalorias/Features/Access/AccessView.swift` with the layout, states and accessibility identifiers from `contracts/ui-contracts.md`, on opaque `AppColor.surfacePrimary`, with the "Review answers" secondary action and inline status/error region; the Apple control is added in US2 (depends on T004, T020)
 - [X] T030 [US1] Wire the `onboarding → access` and `access → onboarding` (Review answers) intents in `Kalorias/App/AppJourneyStore.swift`, resealing a replacement snapshot with the same session identity on review (depends on T026, T029)
 
-**Checkpoint**: A first-run user answers everything offline, reaches Access, and no answer has left
-the device. This is the MVP.
+**Checkpoint (superseded by Phase 8)**: A first-run user could answer everything offline. The current
+product requires a live backend questionnaire while keeping answers local and durable.
 
 ---
 
@@ -245,6 +245,22 @@ second identity, and delete a test account.
 - [ ] T085 Take the "Performance Measurements" from `specs/010-apple-auth-onboarding/quickstart.md`: cold launch under 2 s, an accepted answer durable in under 100 ms at p95, responsive owner-filtered queries at 10,000 mixed-owner meals, and one refresh under an expired-token burst
 - [X] T086 Run the full `xcodebuild ... test` suite from `quickstart.md` and confirm zero warnings under Swift 6 complete concurrency, with `AppJourneyStoreTests.swift`, `AuthenticatedHTTPClientTests.swift` and `AppleCredentialStateServiceTests.swift` actually compiled by the `KaloriasTests` target
 - [ ] T087 Walk the complete "Manual End-to-End Matrix" and "Release Gate" of `specs/010-apple-auth-onboarding/quickstart.md` on a physical device against the staging backend
+
+---
+
+## Phase 8: Backend-Only Questionnaire Amendment
+
+- [X] T090 Remove questionnaire disk/bundle fallback and background refresh while preserving protected answer drafts across app termination
+- [X] T091 Force the public questionnaire request to bypass URL caches and surface a retryable error whenever the backend cannot provide a valid questionnaire
+- [X] T092 Remove embedded questionnaire resources, their generator, and bundle-only tests/project references
+- [X] T093 Align the feature specification, plan, contract, research notes, quickstart, backend documentation, and functional guide with the backend-only rule
+- [X] T094 Classify unsupported questionnaire schemas, types, and structural values as a mandatory app update instead of a retryable service failure
+- [X] T095 Add a non-dismissible localized update gate that opens the configured App Store listing and never exposes stale onboarding content
+- [X] T096 Cover the compatibility gate and App Store release configuration with unit tests
+- [X] T097 Support `date.mode = dateTime` from picker through protected draft and RFC 3339 submission, preserving IANA zone and captured UTC offset
+
+**Checkpoint**: Without a valid backend response there are no questions. After relaunch, a successful
+fetch of the same questionnaire version restores the protected answers at the correct position.
 
 ---
 

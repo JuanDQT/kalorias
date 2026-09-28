@@ -173,12 +173,15 @@ Public questionnaire content. This is the only onboarding call allowed before re
 ```http
 GET /api/v1/kalorias/onboarding?stage=onboarding
 Accept-Language: es
-If-None-Match: "<cached-etag>"
 ```
 
 - No Authorization, user ID, device ID, answers, or analytics identity is sent.
-- Existing `ETag`, `304`, bundled fallback, schema, and cache behavior remain unchanged.
-- The client may complete all questions offline from valid bundled/cached content.
+- The client accepts a complete `200` response and does not persist, bundle, or reuse questionnaire
+  content through an HTTP cache.
+- A network or service failure produces a retryable error. Locally protected answers remain intact
+  and resume after a later successful fetch of the matching questionnaire version.
+- An unsupported `schemaVersion`, question `type`, or closed structural value produces a mandatory
+  app-update gate before any question is displayed; the client must not continue with older content.
 
 ## `POST /api/v1/kalorias/onboarding`
 
@@ -212,6 +215,12 @@ Idempotency-Key: 5C2F0B1E-9A3D-4E77-9E21-2F3A9C1B7D40
       "questionId": "goal_primary",
       "type": "single_choice",
       "optionId": "lose_weight"
+    },
+    {
+      "questionId": "first_session_at",
+      "type": "date",
+      "value": "2026-09-27T18:30:00+02:00",
+      "timeZone": "Europe/Madrid"
     }
   ]
 }
@@ -224,6 +233,9 @@ Contract invariants:
 - A consent receipt is mandatory and must reference accepted versions.
 - The request shape for `answers` remains the questionnaire V1 contract; no Apple credentials are
   attached.
+- A plain `date` answer uses `yyyy-MM-dd`. A `dateTime` answer uses an RFC 3339 `value` with an
+  explicit numeric offset plus its IANA `timeZone`; the backend must preserve the represented
+  instant and zone context.
 - Same user/key plus identical canonical body returns the original result. Same user/key plus a
   different body returns a conflict without changing the account.
 

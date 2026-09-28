@@ -23,3 +23,6 @@ Packages/
 
 # Secrets (never commit the real key)
 Config/Secrets.xcconfig
+
+docs/
+*.tgz

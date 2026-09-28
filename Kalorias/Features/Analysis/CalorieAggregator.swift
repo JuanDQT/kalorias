@@ -34,7 +34,7 @@ nonisolated enum CalorieAggregator {
             // Logged, never corrected, never fatal. The server guarantees this
             // invariant, so a mismatch is a contract break to be fixed there.
             Logger(subsystem: Bundle.main.bundleIdentifier ?? "Kalorias", category: "analysis")
-                .warning("reported total \(reportedTotal) differs from the item sum \(sum)")
+                .warning("reported total differs from the item sum")
         }
         #endif
 

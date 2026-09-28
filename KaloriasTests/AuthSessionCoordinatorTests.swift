@@ -112,6 +112,58 @@ nonisolated final class AuthSessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(stored.onboardingStatus, .required)
     }
 
+    @MainActor
+    func testRefreshRateLimitSuppressesNetworkCallsUntilRetryAfterExpires() async throws {
+        try credentials.saveSession(
+            AuthFixtures.session(accessExpiry: Date(timeIntervalSince1970: 10))
+        )
+        service.refreshResult = .failure(AuthError.rateLimited(retryAfter: 30))
+        let coordinator = makeCoordinator()
+
+        do {
+            _ = try await coordinator.validAccessToken()
+            XCTFail("The rate-limited refresh succeeded.")
+        } catch {
+            XCTAssertEqual(error as? AuthError, .rateLimited(retryAfter: 30))
+        }
+
+        do {
+            _ = try await coordinator.validAccessToken()
+            XCTFail("The cooldown allowed an early refresh.")
+        } catch {
+            XCTAssertEqual(error as? AuthError, .rateLimited(retryAfter: 30))
+        }
+        XCTAssertEqual(service.refreshCalls, ["refresh-1"], "the second call is blocked locally")
+
+        clock.now = Date(timeIntervalSince1970: 31)
+        service.refreshResult = .success(AuthFixtures.credentials())
+        let token = try await coordinator.validAccessToken()
+
+        XCTAssertEqual(token, "access-2")
+        XCTAssertEqual(service.refreshCalls, ["refresh-1", "refresh-1"])
+    }
+
+    @MainActor
+    func testLogoutRefreshesAndReplaysOnceWhenBearerIsRejected() async throws {
+        let live = AuthFixtures.session(
+            accessExpiry: Date(timeIntervalSince1970: 10_000),
+            refreshExpiry: Date(timeIntervalSince1970: 20_000)
+        )
+        try credentials.saveSession(live)
+        service.refreshResult = .success(AuthFixtures.credentials())
+        service.logoutResults = [
+            .failure(AuthError.refreshRejected),
+            .success(()),
+        ]
+        let coordinator = makeCoordinator()
+
+        try await coordinator.logout()
+
+        XCTAssertEqual(service.refreshCalls, [live.refreshToken])
+        XCTAssertEqual(service.logoutCalls, 2)
+        XCTAssertNil(credentials.storedSession)
+    }
+
     // MARK: Single flight
 
     /// Ten concurrent callers, one refresh. This is the whole reason the
@@ -275,16 +327,31 @@ nonisolated final class AuthSessionCoordinatorTests: XCTestCase {
         XCTAssertNil(current)
     }
 
-    /// The local drop happens whatever the network did: a device that cannot
-    /// reach the server must still be able to stop using a credential.
     @MainActor
-    func testLogoutClearsLocallyEvenIfTheServerIsUnreachable() async throws {
+    func testLogoutClearsLocallyOnlyAfterServerConfirmation() async throws {
         let coordinator = makeCoordinator()
         try await coordinator.commit(AuthFixtures.session())
 
-        await coordinator.logout()
+        try await coordinator.logout()
 
         XCTAssertEqual(service.logoutCalls, 1)
         XCTAssertNil(credentials.storedSession)
+    }
+
+    @MainActor
+    func testLogoutFailurePreservesTheCompleteSession() async throws {
+        let coordinator = makeCoordinator()
+        try await coordinator.commit(AuthFixtures.session())
+        service.logoutResult = .failure(AuthError.serviceUnavailable)
+
+        do {
+            try await coordinator.logout()
+            XCTFail("An unconfirmed logout succeeded.")
+        } catch {
+            XCTAssertEqual(error as? AuthError, .serviceUnavailable)
+        }
+
+        XCTAssertEqual(service.logoutCalls, 1)
+        XCTAssertEqual(credentials.storedSession, AuthFixtures.session())
     }
 }

@@ -43,8 +43,10 @@ nonisolated enum AuthLog {
     /// cannot invent a stage name that carries content.
     enum Stage: String {
         case appleAuthorization
+        case authenticatedRequest
         case registration
         case sessionRefresh
+        case logout
         case onboardingSubmission
         case credentialState
         case accountDeletion

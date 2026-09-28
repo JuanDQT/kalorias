@@ -49,6 +49,9 @@ protocol AuthSessionProviding: Sendable, AnyObject {
     func commitOnboardingStatus(_ status: OnboardingServerStatus) async throws
     /// Drop the active session, keeping the known-account marker.
     func endSession() async
+    /// Invalidate this session family on the server. The local record is
+    /// removed only after the server confirms with `204`.
+    func logout() async throws
 }
 
 actor AuthSessionCoordinator: AuthSessionProviding {
@@ -65,6 +68,9 @@ actor AuthSessionCoordinator: AuthSessionProviding {
     /// The refresh currently in flight, if any. This one value is what makes the
     /// coordinator single-flight.
     private var refreshTask: Task<AuthSession, any Error>?
+    /// A server-directed pause after `refresh_rate_limited`. Calls made during
+    /// it fail locally and do not hammer `/auth/refresh` again.
+    private var refreshCooldown: RetryCooldown?
 
     init(
         credentials: any CredentialStoring = KeychainCredentialStore(),
@@ -122,6 +128,14 @@ actor AuthSessionCoordinator: AuthSessionProviding {
             return try await refreshTask.value
         }
 
+        if let refreshCooldown {
+            let remaining = refreshCooldown.secondsRemaining(at: now())
+            if remaining > 0 {
+                throw AuthError.rateLimited(retryAfter: TimeInterval(remaining))
+            }
+            self.refreshCooldown = nil
+        }
+
         guard current.isRefreshTokenUsable(at: now()) else {
             await endSession()
             throw AuthError.refreshRejected
@@ -146,6 +160,7 @@ actor AuthSessionCoordinator: AuthSessionProviding {
         do {
             let updated = try await task.value
             session = updated
+            refreshCooldown = nil
             return updated
         } catch {
             let authError = AuthError.from(error)
@@ -153,6 +168,11 @@ actor AuthSessionCoordinator: AuthSessionProviding {
             // connection leaves it alone to be retried.
             if authError.isDefinitiveRefreshFailure {
                 await endSession()
+            } else if case let .rateLimited(retryAfter) = authError {
+                refreshCooldown = RetryCooldown(
+                    seconds: retryAfter ?? RetryCooldown.defaultSeconds,
+                    now: now()
+                )
             }
             throw authError
         }
@@ -169,6 +189,8 @@ actor AuthSessionCoordinator: AuthSessionProviding {
         try credentials.saveKnownAccount(KnownAccount(session: session))
         self.session = session
         hasLoadedSession = true
+        refreshTask = nil
+        refreshCooldown = nil
     }
 
     func commitOnboardingStatus(_ status: OnboardingServerStatus) async throws {
@@ -190,19 +212,57 @@ actor AuthSessionCoordinator: AuthSessionProviding {
         session = nil
         hasLoadedSession = true
         refreshTask = nil
+        refreshCooldown = nil
     }
 
-    /// Best-effort server-side invalidation, then the local drop. The local part
-    /// happens whatever the network did — a device that cannot reach the server
-    /// must still be able to stop using a credential.
-    func logout() async {
+    /// Invalidate server-side first, then remove the local session. A timeout or
+    /// any non-`204` response keeps the complete record so the same family can
+    /// be retried and the user is never told a logout was confirmed when it was
+    /// not.
+    func logout() async throws {
         loadIfNeeded()
-        if let current = session {
-            try? await service.logout(
+        guard var current = session, current.isValid else {
+            throw AuthError.refreshRejected
+        }
+
+        if !current.isAccessTokenUsable(at: now()) {
+            current = try await refresh(from: current)
+        }
+
+        do {
+            try await service.logout(
                 accessToken: current.accessToken,
                 refreshToken: current.refreshToken
             )
+        } catch AuthError.refreshRejected {
+            // A bearer that looked usable may still have been invalidated on
+            // the server. Refresh once and replay logout once, exactly like the
+            // authenticated client. A second rejection is definitive.
+            do {
+                current = try await refresh(from: current)
+                try await service.logout(
+                    accessToken: current.accessToken,
+                    refreshToken: current.refreshToken
+                )
+            } catch {
+                let mapped = AuthError.from(error)
+                if mapped == .refreshRejected {
+                    await endSession()
+                }
+                throw mapped
+            }
         }
-        await endSession()
+        try credentials.deleteSession()
+        session = nil
+        hasLoadedSession = true
+        refreshTask = nil
+        refreshCooldown = nil
     }
+}
+
+/// Most authenticated-client test doubles never expose account actions. Giving
+/// them a fail-closed default keeps that narrow surface while production's
+/// coordinator provides the real implementation.
+extension AuthSessionProviding {
+    func logout() async throws { throw AuthError.serviceUnavailable }
 }

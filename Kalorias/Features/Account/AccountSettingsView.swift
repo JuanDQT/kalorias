@@ -24,8 +24,8 @@
 //  time the server hears about it. That is what makes a termination mid-request
 //  recoverable instead of a shell full of a deleted account's data.
 //
-//  LOGOUT IS NOT HERE. The session service supports it; V1 has no product reason
-//  to offer it, and an unused destructive-adjacent control is a liability.
+//  LOGOUT INVALIDATES ONLY THIS SESSION. It is deliberately separate from the
+//  destructive account action and clears local authority only after `204`.
 //
 
 import SwiftUI
@@ -64,6 +64,31 @@ struct AccountSettingsView: View {
                     Text("account.privacy")
                 }
                 .accessibilityIdentifier("account.privacyButton")
+            }
+
+            Section {
+                Button {
+                    Task { await journey.logout() }
+                } label: {
+                    if journey.isLoggingOut {
+                        HStack(spacing: AppSpacing.sm) {
+                            ProgressView().controlSize(.small)
+                            Text("account.logout.progress")
+                        }
+                    } else {
+                        Text("account.logout")
+                    }
+                }
+                .disabled(journey.isLoggingOut)
+                .accessibilityIdentifier("account.logoutButton")
+
+                if journey.logoutError != nil {
+                    Text("account.logout.error")
+                        .supportingTextRole()
+                        .foregroundStyle(AppColor.danger)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("account.logoutError")
+                }
             }
 
             Section {

@@ -126,7 +126,6 @@ nonisolated struct RemoteCalorieService: CalorieAnalyzing {
             AnalysisLog.success(
                 outcome: outcome.logDescription,
                 duration: duration,
-                foodCount: outcome.foodCount,
                 requestId: requestId
             )
             return outcome
@@ -136,25 +135,17 @@ nonisolated struct RemoteCalorieService: CalorieAnalyzing {
                 outcome: String(describing: mapped),
                 duration: duration,
                 status: http.statusCode,
-                requestId: requestId,
-                // The server's own text goes HERE and only here: it arrives
-                // Spanish-only while the app is bilingual, so the screen shows
-                // the app's copy and the log keeps the detail (FR-021a).
-                serverMessage: mapped == .photoRejected ? Self.serverMessage(from: data) : nil
+                requestId: requestId
             )
             throw mapped
         }
     }
 
-    /// The `message` field of an error body, when there is one. Never displayed.
-    private static func serverMessage(from data: Data) -> String? {
-        guard
-            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let message = object["message"] as? String
-        else {
-            return nil
+    private struct ServerErrorEnvelope: Decodable {
+        struct Failure: Decodable {
+            let code: String
         }
-        return message
+        let error: Failure
     }
 
     private func makeRequest(baseURL: URL, imageData: Data) -> URLRequest {
@@ -183,22 +174,28 @@ nonisolated struct RemoteCalorieService: CalorieAnalyzing {
         body: Data,
         now: Date = Date()
     ) throws -> AnalysisOutcome {
+        let code = (try? JSONDecoder().decode(ServerErrorEnvelope.self, from: body))?.error.code
+
         switch status {
         case 200:
             // `.noFood` travels this path too — it is a success, not an error
             // (FR-011).
             return try AnalyzeMealResponse.parse(body)
 
-        case 413, 422:
+        case 413 where code == "invalid_request",
+             422 where code == "invalid_request":
             // Which layer refused the photo is meaningless to the user: the move
             // is the same either way, a different photo.
             throw AnalysisError.photoRejected
 
-        case 429:
+        case 429 where code == "analysis_rate_limited":
             let header = headers.value(forHTTPHeaderField: "Retry-After")
             throw AnalysisError.rateLimited(
                 retryAfter: RetryCooldown.parseRetryAfter(header, now: now)
             )
+
+        case 503 where code == "analysis_unavailable":
+            throw AnalysisError.serviceError
 
         default:
             // `503` is deliberately opaque, and so is everything with it: a

@@ -9,15 +9,13 @@
 //  receipt; returning leaves the consent gate exactly as it was. Consent is a
 //  deliberate tap on a button that says so.
 //
-//  THE VERSION SHOWN IS THE VERSION RECORDED. The text ships with the app
-//  alongside `ConsentReceipt.Version`, so a receipt can always be matched back
-//  to the words that were on screen. Server-delivered consent copy would let the
-//  same version string mean different things on different days, which makes the
-//  receipt a record of nothing.
+//  THE VERSION SHOWN IS THE VERSION RECORDED. The text ships with the app and
+//  its Product/Legal-owned identifier arrives through build configuration, so a
+//  receipt can always be matched back to the words that were on screen.
 //
 //  The prose below is the shipping copy for this build. Final legal wording is
-//  an approval artifact; when it changes, the version constants change with it
-//  and every stored receipt correctly stops matching.
+//  an approval artifact; when it changes, its configured identifier changes
+//  with it and every stored receipt correctly stops matching.
 //
 
 import SwiftUI
@@ -26,10 +24,14 @@ struct PrivacyNoticeView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
-    /// The published policy, from the one place the app decides addresses
-    /// (constitution, Backend Environments). Absent in a build that has no
-    /// policy configured, in which case the notice's own text stands alone.
-    private var policyURL: URL? { BackendEnvironment.privacyPolicyURL }
+    /// Passed from the journey on the consent gate so the displayed URL and
+    /// version are exactly the values its receipt will record. Other entry
+    /// points use this build's same validated configuration.
+    private let configuration: ConsentConfiguration?
+
+    init(configuration: ConsentConfiguration? = BackendEnvironment.consentConfiguration) {
+        self.configuration = configuration
+    }
 
     var body: some View {
         NavigationStack {
@@ -40,7 +42,7 @@ struct PrivacyNoticeView: View {
                         .foregroundStyle(AppColor.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    if let url = policyURL {
+                    if let url = configuration?.privacyPolicyURL {
                         Button {
                             openURL(url)
                         } label: {
@@ -51,10 +53,16 @@ struct PrivacyNoticeView: View {
                         .accessibilityIdentifier("privacy.externalPolicyLink")
                     }
 
-                    Text(verbatim: ConsentReceipt.Version.privacyNotice)
-                        .sectionLabelRole()
-                        .foregroundStyle(AppColor.textSecondary)
-                        .accessibilityHidden(true)
+                    if let version = configuration?.privacyNoticeVersion {
+                        Text(verbatim: version)
+                            .sectionLabelRole()
+                            .foregroundStyle(AppColor.textSecondary)
+                            .accessibilityHidden(true)
+                    } else {
+                        Text("consent.configurationError")
+                            .supportingTextRole()
+                            .foregroundStyle(AppColor.danger)
+                    }
                 }
                 .frame(maxWidth: 520, alignment: .leading)
                 .frame(maxWidth: .infinity)

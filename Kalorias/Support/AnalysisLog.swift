@@ -13,9 +13,9 @@
 //  identifies nothing about the user, so making it public is correct — and it is
 //  the only thing that can identify a `503`.
 //
-//  EVERYTHING ELSE STAYS DEFAULT-REDACTED, which is what keeps FR-026 true. The
-//  photo, the image bytes and the food names are never logged at all: not
-//  redacted, not passed in, absent.
+//  THE SIGNATURES ACCEPT NO USER CONTENT. The photo, image bytes, food names,
+//  calorie values, food count and server prose are not redacted values here;
+//  they are absent and cannot be passed by a call site.
 //
 //  NOTHING HERE REACHES THE UI (FR-027). There is no crash reporter, no
 //  analytics, no on-screen id and no persisted log file — the system log is the
@@ -33,34 +33,30 @@ nonisolated enum AnalysisLog {
     )
 
     /// A finished analysis that produced foods or a no-food answer.
-    static func success(outcome: String, duration: TimeInterval, foodCount: Int, requestId: String?) {
+    static func success(outcome: String, duration: TimeInterval, requestId: String?) {
         logger.info(
             """
             analyze ok outcome=\(outcome, privacy: .public) \
             duration=\(String(format: "%.2f", duration), privacy: .public)s \
-            foods=\(foodCount, privacy: .public) \
             requestId=\(requestId ?? "none", privacy: .public)
             """
         )
     }
 
-    /// A failed analysis. `serverMessage` carries the server's own text for a
-    /// rejected photo — the one place that text goes, since the app shows its
-    /// own localized copy instead (FR-021a).
+    /// A failed analysis. Only operational categories are accepted; server
+    /// prose can never quote user content into the device log.
     static func failure(
         outcome: String,
         duration: TimeInterval,
         status: Int?,
-        requestId: String?,
-        serverMessage: String? = nil
+        requestId: String?
     ) {
         logger.error(
             """
             analyze failed outcome=\(outcome, privacy: .public) \
             duration=\(String(format: "%.2f", duration), privacy: .public)s \
             status=\(status.map(String.init) ?? "none", privacy: .public) \
-            requestId=\(requestId ?? "none", privacy: .public) \
-            serverMessage=\(serverMessage ?? "none")
+            requestId=\(requestId ?? "none", privacy: .public)
             """
         )
     }

@@ -20,15 +20,9 @@
 
 import Foundation
 
-/// A questionnaire and the bytes it was decoded from.
-///
-/// THE BYTES ARE THE POINT. The cache stores what the server actually sent, not
-/// a re-encoding of the decoded value: a synthesised encoder does not produce
-/// the keys this decoder reads, and a future build with a wider decoder can
-/// still make sense of a payload this one only partly understood.
+/// A questionnaire received and validated from the backend.
 nonisolated struct FetchedQuestionnaire: Sendable {
     let questionnaire: Questionnaire
-    let payload: Data
 }
 
 /// The public half: content only, no credential, no user, no device identity
@@ -65,9 +59,10 @@ nonisolated enum OnboardingError: Error, Equatable {
     case timeout
     case serviceError
     case invalidResponse
-    /// The payload declares a structure this build does not understand. The app
-    /// falls back to its bundled copy rather than guessing at the difference.
+    /// The payload declares a structure this build does not understand.
     case unsupportedSchema(version: Int)
+    /// A question uses a type or structural field this build cannot render.
+    case updateRequired
 
     // The stable submission outcomes feature 010 has to act on differently.
     // They are separate cases rather than one `serviceError` because each drives
@@ -91,11 +86,19 @@ nonisolated enum OnboardingError: Error, Equatable {
         switch self {
         case .noConnection: "onboarding.error.noConnection"
         case .timeout: "onboarding.error.timeout"
-        case .serviceError, .invalidResponse, .unsupportedSchema: "onboarding.error.service"
+        case .serviceError, .invalidResponse: "onboarding.error.service"
+        case .unsupportedSchema, .updateRequired: "onboarding.update.message"
         case .authenticationRequired, .alreadyComplete: "finalization.error.generic"
         case .idempotencyMismatch: "finalization.error.generic"
         case .consentOutdated: "consent.outdated"
         case .invalidOnboarding: "finalization.error.validation"
+        }
+    }
+
+    var requiresAppUpdate: Bool {
+        switch self {
+        case .unsupportedSchema, .updateRequired: true
+        default: false
         }
     }
 

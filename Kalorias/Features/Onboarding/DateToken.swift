@@ -5,15 +5,13 @@
 //  A date bound in the questionnaire: either an ISO-8601 day (`1993-04-18`) or
 //  a token relative to today (`today`, `today-16y`, `today+30d`).
 //
-//  THE RELATIVE FORM EXISTS BECAUSE THE QUESTIONNAIRE IS ALSO SHIPPED IN THE
-//  BUNDLE. A fixed `maxDate` written today turns a 16-year-old into a
-//  17-year-old next year, and the bundled copy is exactly the one that goes
-//  stale — it is the fallback used on a first launch with no network, which is
-//  the moment nobody is watching.
+//  THE RELATIVE FORM EXISTS BECAUSE A QUESTIONNAIRE VERSION MAY REMAIN ACTIVE
+//  ON THE BACKEND FOR A LONG TIME. A fixed `maxDate` written today turns a
+//  16-year-old into a 17-year-old next year.
 //
 //  RESOLVED ON THE DEVICE, IN ITS CALENDAR AND TIME ZONE. `today` means the
-//  user's today, not the server's: a questionnaire cached last night in Madrid
-//  and opened this morning must not still think it is yesterday.
+//  user's today, not the server's, so locale and time-zone boundaries remain
+//  correct regardless of when the backend document was published.
 //
 //  `today-16y` on `birth_date` is a product decision rather than a detail: a
 //  calorie-deficit plan for a minor is not something this app should generate.

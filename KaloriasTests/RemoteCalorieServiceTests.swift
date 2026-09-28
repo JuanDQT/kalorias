@@ -173,33 +173,64 @@ nonisolated final class RemoteCalorieServiceTests: XCTestCase {
         await expectFailure(
             .photoRejected,
             status: 422,
-            body: Data(#"{"message":"La foto no es válida.","errors":{"photo":["Debe ser JPEG."]}}"#.utf8)
+            body: Data(
+                #"{"error":{"code":"invalid_request","message":"La foto no es válida."}}"#.utf8
+            )
         )
-        await expectFailure(.photoRejected, status: 413)
+        await expectFailure(
+            .photoRejected,
+            status: 413,
+            body: Data(#"{"error":{"code":"invalid_request","message":"Demasiado grande."}}"#.utf8)
+        )
     }
 
     func test429IsRateLimitedCarryingTheServersWait() async {
         await expectFailure(
             .rateLimited(retryAfter: 20),
             status: 429,
-            body: Data(#"{"message":"Demasiadas peticiones."}"#.utf8),
+            body: Data(
+                #"{"error":{"code":"analysis_rate_limited","message":"Demasiadas peticiones."}}"#.utf8
+            ),
             headers: ["Retry-After": "20"]
         )
     }
 
     /// FR-020a: a `429` with no usable header still produces a definite wait.
     func test429WithoutARetryAfterHeaderFallsBackToOneMinute() async {
-        await expectFailure(.rateLimited(retryAfter: 60), status: 429)
+        await expectFailure(
+            .rateLimited(retryAfter: 60),
+            status: 429,
+            body: Data(
+                #"{"error":{"code":"analysis_rate_limited","message":"Demasiadas peticiones."}}"#.utf8
+            )
+        )
     }
 
     /// `503` is deliberately opaque, and everything unexpected joins it — the
     /// contract may add codes and the app must not break when it does.
     func testServerAndUnexpectedStatusesAreServiceErrors() async {
-        await expectFailure(.serviceError, status: 503, body: Data(#"{"message":"No disponible."}"#.utf8))
+        await expectFailure(
+            .serviceError,
+            status: 503,
+            body: Data(
+                #"{"error":{"code":"analysis_unavailable","message":"No disponible."}}"#.utf8
+            )
+        )
         await expectFailure(.serviceError, status: 500)
         await expectFailure(.serviceError, status: 418)
         await expectFailure(.serviceError, status: 404)
         await expectFailure(.serviceError, status: 301)
+    }
+
+    func testStatusWithoutTheContractErrorCodeDoesNotDriveBehavior() async {
+        await expectFailure(.serviceError, status: 413, body: Data())
+        await expectFailure(.serviceError, status: 422, body: Data())
+        await expectFailure(
+            .serviceError,
+            status: 429,
+            body: Data(#"{"error":{"code":"unknown","message":"Nope"}}"#.utf8),
+            headers: ["Retry-After": "20"]
+        )
     }
 
     func testUnreadable200IsAnInvalidResponse() async {

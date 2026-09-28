@@ -33,10 +33,16 @@
 import SwiftUI
 
 struct OnboardingChatView: View {
+    @Environment(\.openURL) private var openURL
     @State private var store: OnboardingStore
+    private let appStoreURL: URL?
 
-    init(store: OnboardingStore = OnboardingStore()) {
+    init(
+        store: OnboardingStore = OnboardingStore(),
+        appStoreURL: URL? = BackendEnvironment.appStoreURL
+    ) {
         _store = State(initialValue: store)
+        self.appStoreURL = appStoreURL
     }
 
     /// The anchor the thread scrolls to. One id, so nothing has to guess which
@@ -61,11 +67,13 @@ struct OnboardingChatView: View {
 
             case let .failed(error):
                 failure(error)
+
+            case .updateRequired:
+                updateRequired
             }
         }
         .animation(AppMotion.standard, value: store.state)
         .task { await store.load() }
-        .task { await store.refreshCacheInBackground() }
         .alert(item: warningBinding) { pending in
             Alert(
                 title: Text("onboarding.warning.title"),
@@ -240,20 +248,55 @@ struct OnboardingChatView: View {
                 .foregroundStyle(AppColor.textPrimary)
                 .multilineTextAlignment(.center)
 
-            // Only offered when there is a thread to go back to. With no
-            // questionnaire at all there is nothing to retry into.
-            if store.flow != nil {
+            Button {
+                Task { await store.load() }
+            } label: {
+                Text("onboarding.retry").padding(.horizontal, AppSpacing.xl)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(AppColor.brandPrimaryFill)
+            .controlSize(.large)
+        }
+        .padding(AppSpacing.xxl)
+    }
+
+    private var updateRequired: some View {
+        VStack(spacing: AppSpacing.lg) {
+            Image(systemName: "arrow.down.app.fill")
+                .font(.largeTitle)
+                .foregroundStyle(AppColor.brandPrimary)
+                .accessibilityHidden(true)
+
+            Text("onboarding.update.title")
+                .rowTitleRole()
+                .multilineTextAlignment(.center)
+
+            Text("onboarding.update.message")
+                .supportingTextRole()
+                .foregroundStyle(AppColor.textSecondary)
+                .multilineTextAlignment(.center)
+
+            if let appStoreURL {
                 Button {
-                    store.dismissFailure()
+                    openURL(appStoreURL)
                 } label: {
-                    Text("onboarding.retry").padding(.horizontal, AppSpacing.xl)
+                    Text("onboarding.update.button")
+                        .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(AppColor.brandPrimaryFill)
                 .controlSize(.large)
+                .accessibilityIdentifier("onboarding.updateButton")
+            } else {
+                Text("onboarding.update.unavailable")
+                    .supportingTextRole()
+                    .foregroundStyle(AppColor.danger)
+                    .multilineTextAlignment(.center)
             }
         }
+        .frame(maxWidth: 520)
         .padding(AppSpacing.xxl)
+        .accessibilityIdentifier("onboarding.updateRequired")
     }
 
     // MARK: Following another answer

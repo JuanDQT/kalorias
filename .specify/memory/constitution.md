@@ -1,6 +1,19 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 4.0.0 → 4.1.0
+Bump rationale: MINOR — sincronizado a Template Constitution v3.1.0. Entran dos
+garantias SHARED: toda vista SwiftUI concreta nueva incluye al menos un
+`#Preview` compilable y determinista en su mismo archivo; y toda duda material
+que requiera una decision del mantenedor se presenta como cuestionario con dos o
+tres opciones mutuamente excluyentes, una marcada Recommended y las
+consecuencias visibles. El Clarification Gate conserva el batch al final de
+`/speckit-specify` y `/speckit-plan`, y la regla se extiende al resto de flujos
+en el punto donde la decision bloquea el progreso seguro. La paleta no cambia ni
+se re-ratifica. `plan-template.md`, `spec-template.md` y `tasks-template.md`
+fueron revisados: sus gates genericos siguen siendo compatibles y no requieren
+edicion.
+
 Version change: 3.4.0 → 3.4.1
 Bump rationale: PATCH — resincronizado a Template Constitution v3.0.2, que
 corrige la clausula Backend Environments en dos puntos sin cambiar lo que exige:
@@ -584,6 +597,13 @@ assuming is what makes the budget real.
   feature and are shared by the views of that feature.
 - Business logic and mutations MUST NOT live in view bodies. A view body
   computes layout from state and calls intents — nothing else.
+- Every new concrete SwiftUI `View` MUST ship with at least one compiling
+  `#Preview` in the same source file. The preview MUST construct every required
+  environment value and dependency from deterministic local fixtures; it MUST
+  NOT contact a live backend or require a production credential. A view with
+  materially different states SHOULD preview the representative states, but one
+  valid preview is the minimum. "Hard to instantiate" is a design problem to
+  fix, not an exception to the preview requirement.
 - Navigation MUST be driven by a dedicated **Router** that owns navigation
   state (paths, presented sheets, modals). Views MUST NOT construct ad hoc
   navigation destinations inline; they request navigation through the Router.
@@ -920,24 +940,32 @@ before implementation begins and again after design is complete.
 
 ### Clarification Gate (NON-NEGOTIABLE)
 
-At the end of **every** `/speckit-specify` run and **every** `/speckit-plan`
-run — before the next command in the flow begins — every open question,
-ambiguity, contradiction, missing decision, or error discovered MUST be put to
-the maintainer and answered. Nothing is left in doubt and nothing is settled by
-assumption.
+Whenever any workflow or automated assistant encounters an open question,
+ambiguity, contradiction, missing decision, or error whose answer would
+materially change the result and cannot be derived safely from existing project
+evidence, it MUST put the decision to the maintainer as a questionnaire before
+choosing. Nothing material is left in doubt and nothing material is settled by
+assumption. Routine, reversible implementation details that do not change the
+requested outcome continue under documented best judgement rather than creating
+ceremonial questions.
 
-- Each question MUST offer **exactly three** concrete options wherever the
-  problem admits three, with one marked **Recommended** and a one-line reason
-  for that recommendation. Where three genuinely distinct options do not exist,
-  the question says so and offers the ones that do — padding a question with a
-  straw option is worse than offering two.
+At the end of **every** `/speckit-specify` run and **every** `/speckit-plan`
+run — before the next command in the flow begins — all such questions discovered
+during the run MUST have been answered.
+
+- Each question MUST be presented in **questionnaire format** with two or three
+  concrete options, with one marked **Recommended** and a one-line reason for
+  that recommendation. Use three wherever three genuinely distinct choices
+  exist; padding a question with a straw option is worse than offering two.
 - Options MUST be real, mutually exclusive, and specific enough to act on
   ("store the total as `Decimal` in minor units" — not "handle money
   correctly"). The maintainer may always answer something outside the three;
   that possibility is implicit and need not be listed as an option.
-- Questions MUST be asked as a batch at the gate rather than dribbled out
-  mid-run, and each one MUST say what it blocks, so the maintainer can see the
-  cost of each answer.
+- During `/speckit-specify` and `/speckit-plan`, questions MUST be collected and
+  asked as a batch at the gate rather than dribbled out mid-run. In any other
+  workflow, ask the questionnaire when the decision first blocks safe progress.
+  Each question MUST say what it blocks, so the maintainer can see the cost of
+  each answer.
 - Answers MUST be written back into the spec or plan **in the same run**, in
   the maintainer's words where they gave them. No `[NEEDS CLARIFICATION]`
   marker, TODO, placeholder, or open question may survive into
@@ -950,6 +978,8 @@ Pull requests MUST confirm, before merge:
 - build succeeds with **zero warnings** under Swift 6 strict concurrency;
 - all unit tests pass, and new/changed business logic has corresponding unit
   tests;
+- every new concrete SwiftUI `View` has at least one compiling, deterministic
+  `#Preview` in its source file;
 - all new user-facing strings have English **and** Spanish values;
 - all colors come from the tokenized palette, and the design-system audits
   (no color literals, no raw font calls, no numeric spacing literals, no inline
@@ -1029,5 +1059,5 @@ All plans and PRs MUST verify compliance with this constitution; any
 deviation MUST be justified in the plan's Complexity Tracking section rather
 than silently introduced.
 
-**Version**: 4.0.0 | **Ratified**: 2026-07-24 | **Last Amended**: 2026-09-01
-**Template**: TemplateConstitution v3.0.2
+**Version**: 4.1.0 | **Ratified**: 2026-07-24 | **Last Amended**: 2026-09-27
+**Template**: TemplateConstitution v3.1.0

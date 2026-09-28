@@ -91,8 +91,8 @@ semantics in [Keychain item attribute keys and values](https://developer.apple.c
 
 ## Decision 5: Protect sensitive onboarding files atomically while the device is locked
 
-**Decision**: Keep questionnaire cache as ordinary non-sensitive cached JSON. Write `OnboardingDraft`
-and `PendingOnboarding` under Application Support using both `.atomic` and
+**Decision**: Do not cache or bundle questionnaire content. Write `OnboardingDraft` and
+`PendingOnboarding` under Application Support using both `.atomic` and
 `.completeFileProtection`, excluding them from backup where appropriate. Propagate write failures;
 never advance the visible state before persistence succeeds.
 

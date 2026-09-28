@@ -100,5 +100,8 @@ nonisolated struct PendingOnboarding: Codable, Equatable, Sendable {
 
     /// Whether this payload may be sent: it has a receipt, and that receipt
     /// still names the copy this build shows.
-    var isReadyToUpload: Bool { consent?.matchesCurrentVersions == true }
+    func isReadyToUpload(using configuration: ConsentConfiguration?) -> Bool {
+        guard let configuration else { return false }
+        return consent?.matches(configuration) == true
+    }
 }

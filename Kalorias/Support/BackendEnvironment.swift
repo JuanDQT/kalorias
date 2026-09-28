@@ -62,7 +62,7 @@ nonisolated enum BackendEnvironment {
     static var isConfigured: Bool { analysisBaseURL != nil }
 
     /// The Info-dictionary key the published privacy policy arrives under, fed
-    /// by `KALORIAS_PRIVACY_POLICY_URL` in `Config/Secrets.xcconfig`.
+    /// by `PRIVACY_POLICY_URL` in `Config/Secrets.xcconfig`.
     ///
     /// It lives here for the same reason the API address does: the constitution
     /// allows exactly one place to decide *where* the app points, and the
@@ -71,9 +71,52 @@ nonisolated enum BackendEnvironment {
     /// credential, and the app only ever opens it (feature 010).
     static let privacyPolicyURLInfoDictionaryKey = "KaloriasPrivacyPolicyURL"
 
-    /// The privacy notice's external link, or `nil` when this build has none —
-    /// in which case the notice simply shows its own text without the link.
+    static let privacyNoticeVersionInfoDictionaryKey = "KaloriasPrivacyNoticeVersion"
+
+    static let healthDataConsentVersionInfoDictionaryKey = "KaloriasHealthDataConsentVersion"
+
+    /// Public App Store listing used by the mandatory-update gate. This is a
+    /// release setting because the numeric App Store ID does not exist until
+    /// App Store Connect creates the product record.
+    static let appStoreURLInfoDictionaryKey = "KaloriasAppStoreURL"
+
+    /// The privacy notice's external link, or `nil` when this build has no
+    /// approved release configuration.
     static var privacyPolicyURL: URL? { baseURL(readingFrom: infoDictionaryLookup, key: privacyPolicyURLInfoDictionaryKey) }
+
+    static var appStoreURL: URL? {
+        baseURL(readingFrom: infoDictionaryLookup, key: appStoreURLInfoDictionaryKey)
+    }
+
+    /// The three Product/Legal inputs that must move together. Returning `nil`
+    /// is a fail-closed release guard: a build with a missing policy URL or an
+    /// invalid version can display the notice, but cannot mint a consent receipt
+    /// or upload health answers.
+    static var consentConfiguration: ConsentConfiguration? {
+        consentConfiguration(readingFrom: infoDictionaryLookup)
+    }
+
+    static func consentConfiguration(
+        readingFrom lookup: (String) -> String?
+    ) -> ConsentConfiguration? {
+        guard
+            let policyURL = baseURL(readingFrom: lookup, key: privacyPolicyURLInfoDictionaryKey),
+            let privacyNoticeVersion = configuredIdentifier(
+                lookup(privacyNoticeVersionInfoDictionaryKey)
+            ),
+            let healthDataConsentVersion = configuredIdentifier(
+                lookup(healthDataConsentVersionInfoDictionaryKey)
+            )
+        else {
+            return nil
+        }
+
+        return ConsentConfiguration(
+            privacyPolicyURL: policyURL,
+            privacyNoticeVersion: privacyNoticeVersion,
+            healthDataConsentVersion: healthDataConsentVersion
+        )
+    }
 
     /// The parsing rules, over an injectable lookup so they are testable.
     static func baseURL(
@@ -94,5 +137,22 @@ nonisolated enum BackendEnvironment {
         }
 
         return url
+    }
+
+    /// Consent identifiers are an API contract, not display text. Reject blank,
+    /// oversized and visibly provisional values so they cannot become audit
+    /// receipts by accident.
+    static func configuredIdentifier(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty, value.count <= ConsentConfiguration.maximumVersionLength else {
+            return nil
+        }
+
+        let normalized = value.lowercased()
+        guard !normalized.contains("pendiente"), !normalized.contains("placeholder") else {
+            return nil
+        }
+        return value
     }
 }

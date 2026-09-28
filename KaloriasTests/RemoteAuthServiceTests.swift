@@ -196,6 +196,14 @@ nonisolated final class RemoteAuthServiceTests: XCTestCase {
         }
     }
 
+    func testHTTPStatusWithoutItsStableCodeDoesNotSelectARecoveryPath() async {
+        json(#"{"error":{"code":"unknown","message":"nope"}}"#, status: 403)
+
+        await assertThrows(.serviceUnavailable) {
+            _ = try await self.service.authenticate(with: AuthFixtures.appleCredential())
+        }
+    }
+
     // MARK: /auth/refresh
 
     private static let refreshBody = """
@@ -318,6 +326,7 @@ nonisolated final class RemoteAuthServiceTests: XCTestCase {
             (409, "apple_revocation_pending", .revocationPending),
             (503, "apple_revocation_pending", .revocationPending),
             (500, "account_deletion_error", .serviceUnavailable),
+            (429, "account_action_rate_limited", .rateLimited(retryAfter: 60)),
         ]
 
         for (status, code, expected) in cases {

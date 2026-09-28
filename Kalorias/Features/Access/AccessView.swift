@@ -105,8 +105,12 @@ struct AccessView: View {
         .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
         .frame(height: 50)
         .frame(maxWidth: .infinity)
-        .disabled(journey.isAuthenticating)
-        .opacity(journey.isAuthenticating ? 0.5 : 1)
+        .disabled(journey.isAuthenticating || journey.accessSecondsUntilRetry != nil)
+        .opacity(
+            journey.isAuthenticating || journey.accessSecondsUntilRetry != nil
+                ? 0.5
+                : 1
+        )
         .accessibilityIdentifier("access.appleButton")
     }
 

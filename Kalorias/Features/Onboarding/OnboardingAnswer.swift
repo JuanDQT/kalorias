@@ -13,10 +13,9 @@
 //  AN `optionId` IS ONLY UNIQUE INSIDE ITS QUESTION. `yes` belongs to three
 //  different questions here. The key is always the pair.
 //
-//  A DATE IS STORED AS YEAR/MONTH/DAY, not as an instant. A birthday is a day on
-//  a calendar, not a moment on a timeline: keeping a `Date` means the submitted
-//  day depends on the time zone the phone happens to be in when the payload is
-//  encoded, and a user who flies east becomes a day younger.
+//  A PLAIN DATE IS STORED AS YEAR/MONTH/DAY. A birthday is a calendar day, not
+//  an instant. A dateTime answer instead keeps the instant and the time zone and
+//  UTC offset selected by the user, so a later zone change cannot rewrite it.
 //
 //  TWO ENCODINGS, DELIBERATELY. `Codable` here is Swift's synthesised one, used
 //  only to save a half-finished onboarding to disk, where both writer and reader
@@ -42,6 +41,7 @@ nonisolated enum OnboardingAnswer: Codable, Equatable, Sendable {
     case text(String)
     case number(Double)
     case date(year: Int, month: Int, day: Int)
+    case dateTime(DateTimeAnswer)
     case measure(MeasureAnswer)
     /// An optional question the user chose to pass on. Different from a question
     /// that was never asked, which is simply absent.
@@ -63,6 +63,8 @@ nonisolated enum OnboardingAnswer: Codable, Equatable, Sendable {
             value.formatted()
         case let .date(year, month, day):
             Self.dayFormatted(year: year, month: month, day: day)
+        case let .dateTime(value):
+            value.summary
         case let .measure(measure):
             measure.summary(for: question)
         case .skipped:
@@ -84,6 +86,98 @@ nonisolated enum OnboardingAnswer: Codable, Equatable, Sendable {
         case let .number(value): value
         default: nil
         }
+    }
+}
+
+// MARK: - Date and time
+
+/// A point in time plus the wall-clock context in which it was selected. The
+/// captured offset keeps the wire value stable even if time-zone rules change;
+/// the IANA identifier tells the server which region that offset came from.
+nonisolated struct DateTimeAnswer: Codable, Equatable, Sendable {
+    let instant: Date
+    let timeZoneIdentifier: String
+    let utcOffsetSeconds: Int
+
+    init(instant: Date, timeZone: TimeZone) {
+        self.instant = instant
+        timeZoneIdentifier = timeZone.identifier
+        utcOffsetSeconds = timeZone.secondsFromGMT(for: instant)
+    }
+
+    private init?(instant: Date, timeZoneIdentifier: String, utcOffsetSeconds: Int) {
+        guard TimeZone(identifier: timeZoneIdentifier) != nil,
+              abs(utcOffsetSeconds) <= 18 * 3_600,
+              utcOffsetSeconds.isMultiple(of: 60),
+              TimeZone(secondsFromGMT: utcOffsetSeconds) != nil
+        else { return nil }
+        self.instant = instant
+        self.timeZoneIdentifier = timeZoneIdentifier
+        self.utcOffsetSeconds = utcOffsetSeconds
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case instant, timeZoneIdentifier, utcOffsetSeconds
+    }
+
+    init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let instant = try c.decode(Date.self, forKey: .instant)
+        let identifier = try c.decode(String.self, forKey: .timeZoneIdentifier)
+        let offset = try c.decode(Int.self, forKey: .utcOffsetSeconds)
+        guard let value = Self(instant: instant, timeZoneIdentifier: identifier, utcOffsetSeconds: offset) else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .utcOffsetSeconds, in: c, debugDescription: "Invalid time zone or UTC offset."
+            )
+        }
+        self = value
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(instant, forKey: .instant)
+        try c.encode(timeZoneIdentifier, forKey: .timeZoneIdentifier)
+        try c.encode(utcOffsetSeconds, forKey: .utcOffsetSeconds)
+    }
+
+    /// RFC 3339 timestamp with the *captured* numeric offset. `Z` is the
+    /// explicit zero-offset spelling and is never a device-local conversion.
+    var wireValue: String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        formatter.timeZone = TimeZone(secondsFromGMT: utcOffsetSeconds)!
+        return formatter.string(from: instant)
+    }
+
+    static func fromWire(value: String, timeZoneIdentifier: String) -> DateTimeAnswer? {
+        let pattern = #"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})$"#
+        guard value.range(of: pattern, options: .regularExpression) != nil else { return nil }
+
+        let offset: Int
+        if value.hasSuffix("Z") {
+            offset = 0
+        } else {
+            let suffix = String(value.suffix(6))
+            guard let hours = Int(suffix.dropFirst().prefix(2)),
+                  let minutes = Int(suffix.suffix(2)),
+                  hours <= 18, minutes < 60
+            else { return nil }
+            offset = (suffix.first == "-" ? -1 : 1) * (hours * 3_600 + minutes * 60)
+        }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        guard let instant = formatter.date(from: value) else { return nil }
+        return Self(instant: instant, timeZoneIdentifier: timeZoneIdentifier, utcOffsetSeconds: offset)
+    }
+
+    var summary: String {
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        formatter.timeZone = TimeZone(secondsFromGMT: utcOffsetSeconds)
+        formatter.dateStyle = .long
+        formatter.timeStyle = .short
+        return formatter.string(from: instant)
     }
 }
 
@@ -139,7 +233,7 @@ nonisolated struct OnboardingSubmission: Codable, Equatable, Sendable {
 
         private enum CodingKeys: String, CodingKey {
             case questionId, type, optionId, optionIds, customValues
-            case value, unit, displayUnit, displayComponents
+            case value, timeZone, unit, displayUnit, displayComponents
             case acknowledged, skipped
         }
 
@@ -162,6 +256,9 @@ nonisolated struct OnboardingSubmission: Codable, Equatable, Sendable {
                 try c.encode(value, forKey: .value)
             case let .date(year, month, day):
                 try c.encode(String(format: "%04d-%02d-%02d", year, month, day), forKey: .value)
+            case let .dateTime(value):
+                try c.encode(value.wireValue, forKey: .value)
+                try c.encode(value.timeZoneIdentifier, forKey: .timeZone)
             case let .measure(measure):
                 try c.encode(measure.canonical, forKey: .value)
                 try c.encode(measure.unit, forKey: .unit)
@@ -229,8 +326,18 @@ nonisolated struct OnboardingSubmission: Codable, Equatable, Sendable {
                 answer = .number(try c.decode(Double.self, forKey: .value))
             case .date:
                 let raw = try c.decode(String.self, forKey: .value)
-                let parts = raw.split(separator: "-").compactMap { Int($0) }
-                guard parts.count == 3 else {
+                if raw.contains("T") {
+                    let zone = try c.decode(String.self, forKey: .timeZone)
+                    guard let value = DateTimeAnswer.fromWire(value: raw, timeZoneIdentifier: zone) else {
+                        throw DecodingError.dataCorruptedError(
+                            forKey: .value, in: c, debugDescription: "Expected an RFC 3339 date-time with offset."
+                        )
+                    }
+                    answer = .dateTime(value)
+                    break
+                }
+                let parts = raw.split(separator: "-", omittingEmptySubsequences: false).compactMap { Int($0) }
+                guard parts.count == 3, raw.count == 10 else {
                     throw DecodingError.dataCorruptedError(
                         forKey: .value,
                         in: c,

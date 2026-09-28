@@ -41,9 +41,8 @@ protocol AuthenticationServicing: Sendable {
     /// Rotate the session. The refresh credential is the only authority used.
     nonisolated func refresh(refreshToken: String) async throws -> SessionCredentials
 
-    /// End the session family. Best-effort: the local session is cleared either
-    /// way, because a device that cannot reach the server must still be able to
-    /// stop using a credential.
+    /// End the session family. Local credentials are removed only after the
+    /// backend confirms the operation with `204`.
     nonisolated func logout(accessToken: String, refreshToken: String) async throws
 
     /// Delete the account, presenting exactly the values a confirmed attempt
@@ -147,7 +146,7 @@ nonisolated enum AuthError: Error, Equatable, Sendable {
     /// sibling rule for tokens): a 500 must not log a user out.
     var isDefinitiveRefreshFailure: Bool {
         switch self {
-        case .refreshRejected, .refreshReused, .invalidRequest: true
+        case .refreshRejected, .refreshReused: true
         default: false
         }
     }
@@ -230,9 +229,8 @@ nonisolated struct RemoteAuthService: AuthenticationServicing {
 
         let (data, http) = try await send(request)
         guard http.statusCode == 200 || http.statusCode == 201 else {
-            throw Self.mapError(status: http.statusCode, data: data, headers: http)
+            throw Self.loggedError(operation: .apple, data: data, response: http)
         }
-
         // Decoding failures are mapped here, not left to escape. A raw
         // `DecodingError` reaching the journey is an error with no branch and no
         // copy — an unknown onboarding status and an unparseable date are both
@@ -243,6 +241,10 @@ nonisolated struct RemoteAuthService: AuthenticationServicing {
         guard !envelope.data.user.id.isEmpty, envelope.data.session.isValid else {
             throw AuthError.invalidResponse
         }
+        AuthLog.success(
+            .registration,
+            requestId: http.value(forHTTPHeaderField: "X-Request-Id")
+        )
         return AuthenticationResponse(
             userId: envelope.data.user.id,
             session: envelope.data.session,
@@ -259,9 +261,8 @@ nonisolated struct RemoteAuthService: AuthenticationServicing {
 
         let (data, http) = try await send(request)
         guard http.statusCode == 200 else {
-            throw Self.mapError(status: http.statusCode, data: data, headers: http)
+            throw Self.loggedError(operation: .refresh, data: data, response: http)
         }
-
         guard let envelope = try? Self.decoder.decode(RefreshEnvelope.self, from: data) else {
             throw AuthError.invalidResponse
         }
@@ -272,6 +273,10 @@ nonisolated struct RemoteAuthService: AuthenticationServicing {
         guard envelope.data.session.refreshToken != refreshToken else {
             throw AuthError.invalidResponse
         }
+        AuthLog.success(
+            .sessionRefresh,
+            requestId: http.value(forHTTPHeaderField: "X-Request-Id")
+        )
         return envelope.data.session
     }
 
@@ -285,8 +290,9 @@ nonisolated struct RemoteAuthService: AuthenticationServicing {
 
         let (data, http) = try await send(request)
         guard http.statusCode == 204 else {
-            throw Self.mapError(status: http.statusCode, data: data, headers: http)
+            throw Self.loggedError(operation: .logout, data: data, response: http)
         }
+        AuthLog.success(.logout, requestId: http.value(forHTTPHeaderField: "X-Request-Id"))
     }
 
     // MARK: Deletion
@@ -304,8 +310,12 @@ nonisolated struct RemoteAuthService: AuthenticationServicing {
         // `204` and nothing else. `202` would mean the server is still working,
         // and this build has no contract for polling that.
         guard http.statusCode == 204 else {
-            throw Self.mapError(status: http.statusCode, data: data, headers: http)
+            throw Self.loggedError(operation: .accountDeletion, data: data, response: http)
         }
+        AuthLog.success(
+            .accountDeletion,
+            requestId: http.value(forHTTPHeaderField: "X-Request-Id")
+        )
     }
 
     // MARK: Plumbing
@@ -331,28 +341,88 @@ nonisolated struct RemoteAuthService: AuthenticationServicing {
         }
     }
 
-    /// Status plus the server's stable machine code. The code decides, because
-    /// two different `409`s mean two different things here.
-    static func mapError(status: Int, data: Data, headers: HTTPURLResponse?) -> AuthError {
+    private enum Operation {
+        case apple
+        case refresh
+        case logout
+        case accountDeletion
+
+        var logStage: AuthLog.Stage {
+            switch self {
+            case .apple: .registration
+            case .refresh: .sessionRefresh
+            case .logout: .logout
+            case .accountDeletion: .accountDeletion
+            }
+        }
+    }
+
+    /// Map the stable wire code and retain the server correlation id in the
+    /// privacy-safe system log. Bodies and credentials never reach `AuthLog`.
+    private static func loggedError(
+        operation: Operation,
+        data: Data,
+        response: HTTPURLResponse
+    ) -> AuthError {
+        let mapped = mapError(operation: operation, data: data, headers: response)
+        AuthLog.failure(
+            operation.logStage,
+            outcome: String(describing: mapped),
+            requestId: response.value(forHTTPHeaderField: "X-Request-Id")
+        )
+        return mapped
+    }
+
+    /// The server's stable machine code decides the recovery path. HTTP status
+    /// alone is deliberately insufficient: the same `401`, `409` and `429`
+    /// mean different things on different routes.
+    private static func mapError(
+        operation: Operation,
+        data: Data,
+        headers: HTTPURLResponse?
+    ) -> AuthError {
         let code = (try? decoder.decode(ErrorEnvelope.self, from: data))?.error.code
 
-        switch status {
-        case 400: return .invalidRequest
-        case 401:
-            return code == "invalid_refresh_token" ? .refreshRejected : .invalidAppleCredential
-        case 403: return .reauthenticationRequired
-        case 409:
-            switch code {
-            case "refresh_token_reused": return .refreshReused
-            case "apple_revocation_pending": return .revocationPending
-            default: return .attemptReplayed
-            }
-        case 429:
-            let retryAfter = headers?.value(forHTTPHeaderField: "Retry-After").flatMap(TimeInterval.init)
-            return .rateLimited(retryAfter: retryAfter)
-        case 503:
-            return code == "apple_revocation_pending" ? .revocationPending : .serviceUnavailable
+        switch (operation, headers?.statusCode, code) {
+        case (.apple, 400, "invalid_request"):
+            return .invalidRequest
+        case (.apple, 401, "invalid_apple_credential"):
+            return .invalidAppleCredential
+        case (.apple, 409, "auth_attempt_replayed"):
+            return .attemptReplayed
+        case (.apple, 429, "auth_rate_limited"),
+             (.refresh, 429, "refresh_rate_limited"),
+             (.accountDeletion, 429, "account_action_rate_limited"):
+            let header = headers?.value(forHTTPHeaderField: "Retry-After")
+            return .rateLimited(
+                retryAfter: RetryCooldown.parseRetryAfter(header, now: Date())
+            )
+        case (.apple, 503, "apple_temporarily_unavailable"),
+             (.apple, 500, "auth_service_error"),
+             (.refresh, 500, "auth_service_error"),
+             (.refresh, 503, "auth_service_error"),
+             (.logout, 500, "auth_service_error"),
+             (.logout, 503, "auth_service_error"),
+             (.accountDeletion, 500, "account_deletion_error"):
+            return .serviceUnavailable
+        case (.refresh, 400, "invalid_request"), (.logout, 400, "invalid_request"):
+            return .invalidRequest
+        case (.refresh, 401, "invalid_refresh_token"):
+            return .refreshRejected
+        case (.refresh, 409, "refresh_token_reused"):
+            return .refreshReused
+        case (.logout, 401, "authentication_required"),
+             (.accountDeletion, 401, "authentication_required"):
+            return .refreshRejected
+        case (.accountDeletion, 403, "reauthentication_required"):
+            return .reauthenticationRequired
+        case (.accountDeletion, 409, "apple_revocation_pending"),
+             (.accountDeletion, 503, "apple_revocation_pending"):
+            return .revocationPending
         default:
+            // Unknown or malformed bodies are not interpreted from their status.
+            // They are recoverable service failures until the contract names a
+            // stable code and a safe client action.
             return .serviceUnavailable
         }
     }

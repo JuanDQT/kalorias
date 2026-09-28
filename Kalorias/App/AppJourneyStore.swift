@@ -71,8 +71,9 @@ final class AppJourneyStore {
     /// True from the tap until the backend has answered. Disables the button and
     /// the review action so a sealed payload cannot change mid-authentication.
     private(set) var isAuthenticating = false
-    /// The `Retry-After` the server asked for, when it did.
-    private(set) var retryAfter: TimeInterval?
+    /// Remaining server-directed pause after `auth_rate_limited`. While set,
+    /// the Apple control is disabled and another exchange cannot be sent.
+    private(set) var accessSecondsUntilRetry: Int?
 
     // MARK: Consent and finalization state
 
@@ -86,11 +87,18 @@ final class AppJourneyStore {
     // MARK: Account state
 
     private(set) var deletionError: AuthError?
+    private(set) var deletionAuthorizationNotice: AppleAuthorizationError?
     private(set) var isDeleting = false
+    private(set) var deletionSecondsUntilRetry: Int?
+    private(set) var logoutError: AuthError?
+    private(set) var isLoggingOut = false
     /// The app moved developer accounts. Support, not deletion.
     private(set) var needsAccountTransferHelp = false
 
     nonisolated enum ConsentFailure: Equatable, Sendable {
+        /// Product/Legal release values are absent or invalid. No receipt can be
+        /// created until the build is configured with the approved inputs.
+        case notConfigured
         /// The receipt could not be written. Nothing was sent.
         case storage
         /// The accepted versions are no longer the approved ones.
@@ -108,6 +116,13 @@ final class AppJourneyStore {
     private let pendingStorage: PendingOnboardingStorage
     private let localData: (any AccountLocalDataClearing)?
     private let now: () -> Date
+    private var accessCooldownTask: Task<Void, Never>?
+    private var deletionCooldownTask: Task<Void, Never>?
+
+    /// The exact policy URL and version identifiers shipped by this build.
+    /// Exposed read-only so the consent and privacy views render the same values
+    /// that are written into the receipt.
+    let consentConfiguration: ConsentConfiguration?
 
     init(
         credentials: any CredentialStoring = KeychainCredentialStore(),
@@ -118,6 +133,7 @@ final class AppJourneyStore {
         onboardingStorage: OnboardingStorage = OnboardingStorage(),
         pendingStorage: PendingOnboardingStorage = PendingOnboardingStorage(),
         localData: (any AccountLocalDataClearing)? = nil,
+        consentConfiguration: ConsentConfiguration? = BackendEnvironment.consentConfiguration,
         now: @escaping () -> Date = Date.init
     ) {
         let coordinator = sessions
@@ -135,6 +151,7 @@ final class AppJourneyStore {
         self.onboardingStorage = onboardingStorage
         self.pendingStorage = pendingStorage
         self.localData = localData
+        self.consentConfiguration = consentConfiguration
         self.now = now
         // Now that `self` exists, the client it just built can call back into it.
         relay.connect(self)
@@ -230,7 +247,7 @@ final class AppJourneyStore {
                 // A consented payload does **not** upload itself on launch: a
                 // previous process may have already shown the user a failure, or
                 // died mid-request. The finalization screen asks (FR-033).
-                if pending.isReadyToUpload {
+                if pending.isReadyToUpload(using: consentConfiguration) {
                     finalizationAwaitsUser = true
                     phase = .finalizing
                 } else {
@@ -318,11 +335,10 @@ final class AppJourneyStore {
     /// A successful native authorization. Exchanges it for a Kalorias session
     /// and moves to whatever the *server* says this account needs.
     func signIn(with credential: AppleAuthorizationCredential) async {
-        guard !isAuthenticating else { return }
+        guard !isAuthenticating, accessSecondsUntilRetry == nil else { return }
         isAuthenticating = true
         accessError = nil
         accessNotice = nil
-        retryAfter = nil
         defer { isAuthenticating = false }
 
         do {
@@ -335,6 +351,9 @@ final class AppJourneyStore {
             // both writes have landed (data model, "Backend registration").
             try await sessions.commit(session)
             activeUserID = session.userId
+            accessCooldownTask?.cancel()
+            accessCooldownTask = nil
+            accessSecondsUntilRetry = nil
 
             switch response.onboardingStatus {
             case .complete:
@@ -345,7 +364,7 @@ final class AppJourneyStore {
                     phase = .onboarding
                     return
                 }
-                if pending.isReadyToUpload {
+                if pending.isReadyToUpload(using: consentConfiguration) {
                     await finalize(automatic: true)
                 } else {
                     phase = .consent
@@ -355,7 +374,11 @@ final class AppJourneyStore {
             let authError = AuthError.from(error)
             AuthLog.failure(.registration, outcome: String(describing: authError))
             accessError = authError
-            retryAfter = authError.retryAfter
+            if case let .rateLimited(retryAfter) = authError {
+                beginAccessCooldown(
+                    seconds: retryAfter ?? RetryCooldown.defaultSeconds
+                )
+            }
             // Nothing local changed: the sealed payload and every answer in it
             // are exactly where they were (FR-029).
         }
@@ -372,6 +395,22 @@ final class AppJourneyStore {
         accessNotice = nil
     }
 
+    private func beginAccessCooldown(seconds: TimeInterval) {
+        accessCooldownTask?.cancel()
+        let cooldown = RetryCooldown(seconds: seconds, now: now())
+        accessSecondsUntilRetry = cooldown.secondsRemaining(at: now())
+
+        accessCooldownTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard let self, !Task.isCancelled else { return }
+                let remaining = cooldown.secondsRemaining(at: self.now())
+                self.accessSecondsUntilRetry = remaining == 0 ? nil : remaining
+                if remaining == 0 { return }
+            }
+        }
+    }
+
     // MARK: Consent
 
     /// "Accept and create my plan": persist the receipt first, then start the
@@ -380,7 +419,12 @@ final class AppJourneyStore {
         guard phase == .consent else { return }
         consentError = nil
 
-        let receipt = ConsentReceipt(grantedAt: now())
+        guard let consentConfiguration else {
+            consentError = .notConfigured
+            return
+        }
+
+        let receipt = ConsentReceipt(configuration: consentConfiguration, grantedAt: now())
         do {
             pending = try await pendingStorage.grantConsent(receipt)
         } catch {
@@ -410,7 +454,11 @@ final class AppJourneyStore {
     /// - Parameter automatic: true only for the single attempt that follows
     ///   fresh consent in this process. Every other attempt is user-initiated.
     private func finalize(automatic: Bool) async {
-        guard !isFinalizing, let pending, pending.isReadyToUpload else { return }
+        guard
+            !isFinalizing,
+            let pending,
+            pending.isReadyToUpload(using: consentConfiguration)
+        else { return }
 
         phase = .finalizing
         finalizationAwaitsUser = false
@@ -448,6 +496,42 @@ final class AppJourneyStore {
         }
     }
 
+    // MARK: Account
+
+    /// Close only this Kalorias session. The server's `204` is the commit point;
+    /// failures keep the Keychain session and authenticated shell intact.
+    func logout() async {
+        guard phase == .ready, !isLoggingOut else { return }
+        let ownerUserID = activeUserID
+        isLoggingOut = true
+        logoutError = nil
+        defer { isLoggingOut = false }
+
+        do {
+            try await sessions.logout()
+            AuthLog.success(.logout)
+            if let ownerUserID {
+                await localData?.clearLocalData(ownedBy: ownerUserID)
+            }
+            await pendingStorage.clear()
+            await onboardingStorage.clearDraft()
+            pending = nil
+            activeUserID = nil
+            phase = .access
+        } catch {
+            let mapped = AuthError.from(error)
+            AuthLog.failure(.logout, outcome: String(describing: mapped))
+            logoutError = mapped
+
+            // Refresh rejection has its own contract: the session is already
+            // definitively over even though `/logout` could not be called.
+            if mapped.isDefinitiveRefreshFailure {
+                activeUserID = nil
+                phase = .access
+            }
+        }
+    }
+
     // MARK: Account deletion
 
     /// The user confirmed the destructive action.
@@ -479,6 +563,7 @@ final class AppJourneyStore {
     /// "Continue" on the deletion gate, after a failure or a relaunch. Replays
     /// the exact confirmed operation.
     func retryAccountDeletion() async {
+        guard deletionSecondsUntilRetry == nil else { return }
         guard let attempt = try? credentials.loadDeletionAttempt() else {
             // Nothing outstanding: fall back to a normal bootstrap rather than
             // leaving the user on a gate with nothing behind it.
@@ -488,11 +573,65 @@ final class AppJourneyStore {
         await performDeletion(attempt)
     }
 
-    private func performDeletion(_ attempt: AccountDeletionAttempt) async {
+    /// Apple has freshly reauthenticated the owner of the already-confirmed
+    /// deletion. The old bearer/key pair is replaced with a new operation only
+    /// after the backend proves this is the same Kalorias user.
+    func reauthenticateAccountDeletion(
+        with credential: AppleAuthorizationCredential
+    ) async {
+        guard
+            phase == .deletingAccount,
+            deletionError == .reauthenticationRequired,
+            !isAuthenticating,
+            let previousAttempt = try? credentials.loadDeletionAttempt()
+        else { return }
+
+        isAuthenticating = true
+        deletionAuthorizationNotice = nil
+        defer { isAuthenticating = false }
+
+        do {
+            let response = try await auth.authenticate(with: credential)
+            guard response.userId == previousAttempt.ownerUserID else {
+                // Never turn "reauthenticate this deletion" into "delete the
+                // different Apple account that happened to sign in".
+                throw AuthError.invalidAppleCredential
+            }
+
+            let session = response.makeSession(
+                appleUserIdentifier: credential.appleUserIdentifier
+            )
+            try await sessions.commit(session)
+
+            let restarted = AccountDeletionAttempt(
+                operationId: UUID(),
+                presentedAccessToken: session.accessToken,
+                ownerUserID: session.userId,
+                confirmedAt: now()
+            )
+            try credentials.saveDeletionAttempt(restarted)
+            deletionError = nil
+            await performDeletion(restarted)
+        } catch {
+            let mapped = AuthError.from(error)
+            AuthLog.failure(.accountDeletion, outcome: String(describing: mapped))
+            deletionError = mapped
+        }
+    }
+
+    /// The reauthentication sheet ended before a backend request was possible.
+    func accountDeletionAuthorizationDidFail(_ error: AppleAuthorizationError) {
+        deletionAuthorizationNotice = error
+    }
+
+    private func performDeletion(
+        _ attempt: AccountDeletionAttempt,
+        allowsRefresh: Bool = true
+    ) async {
         guard !isDeleting else { return }
         isDeleting = true
         deletionError = nil
-        defer { isDeleting = false }
+        deletionAuthorizationNotice = nil
 
         do {
             try await auth.deleteAccount(
@@ -503,12 +642,82 @@ final class AppJourneyStore {
             // Any non-`204` leaves every local record and credential in place.
             let mapped = AuthError.from(error)
             AuthLog.failure(.accountDeletion, outcome: String(describing: mapped))
+            isDeleting = false
+
+            if mapped == .refreshRejected {
+                if allowsRefresh {
+                    await restartDeletionAfterRefreshing(attempt)
+                } else {
+                    // A newly rotated bearer was also rejected. Apple is the
+                    // only remaining way to establish fresh authority.
+                    deletionError = .reauthenticationRequired
+                }
+                return
+            }
+
             deletionError = mapped
+            if case let .rateLimited(retryAfter) = mapped {
+                beginDeletionCooldown(
+                    seconds: retryAfter ?? RetryCooldown.defaultSeconds
+                )
+            }
             return
         }
+        isDeleting = false
         AuthLog.success(.accountDeletion)
 
         await clearEverything(ownedBy: attempt.ownerUserID)
+    }
+
+    /// A deletion `401` is safe to retry once because the backend checks the
+    /// exact deletion tombstone before ordinary authentication. A refreshed
+    /// bearer starts a new stable operation; a second `401`, or a definitively
+    /// dead refresh token, moves to native Apple reauthentication.
+    private func restartDeletionAfterRefreshing(_ attempt: AccountDeletionAttempt) async {
+        do {
+            let accessToken = try await sessions.refreshedAccessToken(
+                replacing: attempt.presentedAccessToken
+            )
+            guard
+                let current = await sessions.currentSession(),
+                current.userId == attempt.ownerUserID,
+                current.accessToken == accessToken
+            else {
+                throw AuthError.refreshRejected
+            }
+
+            let restarted = AccountDeletionAttempt(
+                operationId: UUID(),
+                presentedAccessToken: accessToken,
+                ownerUserID: attempt.ownerUserID,
+                confirmedAt: now()
+            )
+            try credentials.saveDeletionAttempt(restarted)
+            deletionError = nil
+            await performDeletion(restarted, allowsRefresh: false)
+        } catch {
+            let mapped = AuthError.from(error)
+            AuthLog.failure(.accountDeletion, outcome: String(describing: mapped))
+            deletionError = mapped.isDefinitiveRefreshFailure
+                ? .reauthenticationRequired
+                : mapped
+        }
+    }
+
+    private func beginDeletionCooldown(seconds: TimeInterval) {
+        deletionCooldownTask?.cancel()
+        let cooldown = RetryCooldown(seconds: seconds, now: now())
+        deletionSecondsUntilRetry = cooldown.secondsRemaining(at: now())
+
+        deletionCooldownTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard let self, !Task.isCancelled else { return }
+                let remaining = cooldown.secondsRemaining(at: self.now())
+                self.deletionSecondsUntilRetry = remaining == 0 ? nil : remaining
+                if remaining == 0 { return }
+            }
+        }
     }
 
     /// The cleanup order from the data model. Each step is idempotent, so an
@@ -527,6 +736,12 @@ final class AppJourneyStore {
         pending = nil
         activeUserID = nil
         deletionError = nil
+        deletionCooldownTask?.cancel()
+        deletionCooldownTask = nil
+        deletionSecondsUntilRetry = nil
+        accessCooldownTask?.cancel()
+        accessCooldownTask = nil
+        accessSecondsUntilRetry = nil
         finalizationError = nil
         consentError = nil
         accessError = nil

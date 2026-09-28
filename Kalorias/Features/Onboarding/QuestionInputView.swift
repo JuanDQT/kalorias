@@ -10,7 +10,7 @@
 //  compiler is the one that says so. A `default` that quietly renders nothing is
 //  how a required question turns into a plan calculated from data nobody
 //  collected — the payload is refused at decoding time instead, and the app
-//  falls back to its bundled copy.
+//  requires an update before showing any question.
 //
 
 import SwiftUI
@@ -47,9 +47,7 @@ struct QuestionInputView: View {
                 NumberAnswerInput(question: question, initial: initial) { onAnswer(.number($0)) }
 
             case .date:
-                DateAnswerInput(question: question, initial: initial) { year, month, day in
-                    onAnswer(.date(year: year, month: month, day: day))
-                }
+                DateAnswerInput(question: question, initial: initial, onSubmit: onAnswer)
 
             case .measure:
                 MeasureWheelInput(
@@ -208,11 +206,21 @@ struct NumberAnswerInput: View {
 struct DateAnswerInput: View {
     let question: Question
     let initial: OnboardingAnswer?
-    let onSubmit: (Int, Int, Int) -> Void
+    let onSubmit: (OnboardingAnswer) -> Void
 
     @State private var value = Date()
 
-    private var calendar: Calendar { .current }
+    private var selectionTimeZone: TimeZone {
+        guard case let .dateTime(existing) = initial else { return .current }
+        return TimeZone(identifier: existing.timeZoneIdentifier) ?? .current
+    }
+
+    private var calendar: Calendar {
+        var calendar = Calendar.current
+        calendar.timeZone = selectionTimeZone
+        return calendar
+    }
+    private var isDateTime: Bool { question.date?.mode == .dateTime }
 
     /// The bounds, resolved here rather than at decoding time: `today-16y` means
     /// the device's today, in its calendar.
@@ -222,6 +230,10 @@ struct DateAnswerInput: View {
               let upper = config.maxDate.resolve(calendar: calendar),
               lower <= upper
         else { return nil }
+        if isDateTime,
+           let endOfUpperDay = calendar.date(byAdding: .day, value: 1, to: upper)?.addingTimeInterval(-1) {
+            return lower...endOfUpperDay
+        }
         return lower...upper
     }
 
@@ -229,18 +241,32 @@ struct DateAnswerInput: View {
         VStack(spacing: AppSpacing.md) {
             Group {
                 if let range {
-                    DatePicker("", selection: $value, in: range, displayedComponents: .date)
+                    DatePicker(
+                        "",
+                        selection: $value,
+                        in: range,
+                        displayedComponents: isDateTime ? [.date, .hourAndMinute] : .date
+                    )
                 } else {
-                    DatePicker("", selection: $value, displayedComponents: .date)
+                    DatePicker(
+                        "",
+                        selection: $value,
+                        displayedComponents: isDateTime ? [.date, .hourAndMinute] : .date
+                    )
                 }
             }
             .datePickerStyle(.wheel)
             .labelsHidden()
+            .environment(\.timeZone, selectionTimeZone)
 
             Button {
+                if isDateTime {
+                    onSubmit(.dateTime(DateTimeAnswer(instant: value, timeZone: selectionTimeZone)))
+                    return
+                }
                 let parts = calendar.dateComponents([.year, .month, .day], from: value)
                 guard let year = parts.year, let month = parts.month, let day = parts.day else { return }
-                onSubmit(year, month, day)
+                onSubmit(.date(year: year, month: month, day: day))
             } label: {
                 Text("onboarding.confirm").frame(maxWidth: .infinity)
             }
@@ -252,6 +278,10 @@ struct DateAnswerInput: View {
     }
 
     private func load() {
+        if case let .dateTime(existing) = initial {
+            value = existing.instant
+            return
+        }
         if case let .date(year, month, day) = initial,
            let existing = calendar.date(from: DateComponents(year: year, month: month, day: day)) {
             value = existing
@@ -260,9 +290,21 @@ struct DateAnswerInput: View {
         // Opening on today when the range ends 16 years ago means the picker
         // starts pinned to its own maximum, which reads as broken.
         if let fallback = question.date?.default?.resolve(calendar: calendar) {
-            value = fallback
+            value = isDateTime ? date(on: fallback, withTimeFrom: .now) : fallback
         } else if let range {
-            value = range.upperBound
+            value = isDateTime
+                ? Swift.min(Swift.max(Date.now, range.lowerBound), range.upperBound)
+                : range.upperBound
         }
+    }
+
+    private func date(on day: Date, withTimeFrom time: Date) -> Date {
+        let timeParts = calendar.dateComponents([.hour, .minute], from: time)
+        return calendar.date(
+            bySettingHour: timeParts.hour ?? 0,
+            minute: timeParts.minute ?? 0,
+            second: 0,
+            of: day
+        ) ?? day
     }
 }

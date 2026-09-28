@@ -28,6 +28,9 @@ import SwiftUI
 struct HealthDataConsentView: View {
     @Environment(AppJourneyStore.self) private var journey
     @State private var isShowingPrivacyNotice = false
+    /// Explicitly off every time this gate is presented. Reading the notice or
+    /// signing in never changes it.
+    @State private var hasAffirmedConsent = false
 
     var body: some View {
         ZStack {
@@ -54,10 +57,27 @@ struct HealthDataConsentView: View {
                     .foregroundStyle(AppColor.brandPrimary)
                     .accessibilityIdentifier("consent.privacyButton")
 
+                    Toggle(isOn: $hasAffirmedConsent) {
+                        Text("consent.affirmation")
+                            .supportingTextRole()
+                            .foregroundStyle(AppColor.textPrimary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .toggleStyle(.switch)
+                    .accessibilityIdentifier("consent.affirmationToggle")
+
                     Spacer(minLength: AppSpacing.xl)
 
+                    if journey.consentConfiguration == nil {
+                        Text("consent.configurationError")
+                            .supportingTextRole()
+                            .foregroundStyle(AppColor.danger)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("consent.configurationError")
+                    }
+
                     if let failure = journey.consentError {
-                        Text(failure == .storage ? "consent.storageError" : "consent.outdated")
+                        Text(errorKey(for: failure))
                             .supportingTextRole()
                             .foregroundStyle(AppColor.danger)
                             .fixedSize(horizontal: false, vertical: true)
@@ -73,7 +93,11 @@ struct HealthDataConsentView: View {
                     .buttonStyle(.borderedProminent)
                     .tint(AppColor.brandPrimaryFill)
                     .controlSize(.large)
-                    .disabled(journey.isFinalizing)
+                    .disabled(
+                        !hasAffirmedConsent
+                            || journey.consentConfiguration == nil
+                            || journey.isFinalizing
+                    )
                     .accessibilityIdentifier("consent.acceptButton")
 
                     Button {
@@ -95,7 +119,15 @@ struct HealthDataConsentView: View {
         .animation(AppMotion.subtle, value: journey.consentError)
         .accessibilityIdentifier("consent.screen")
         .sheet(isPresented: $isShowingPrivacyNotice) {
-            PrivacyNoticeView()
+            PrivacyNoticeView(configuration: journey.consentConfiguration)
+        }
+    }
+
+    private func errorKey(for failure: AppJourneyStore.ConsentFailure) -> LocalizedStringKey {
+        switch failure {
+        case .notConfigured: "consent.configurationError"
+        case .storage: "consent.storageError"
+        case .outdated: "consent.outdated"
         }
     }
 }

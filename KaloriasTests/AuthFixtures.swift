@@ -110,6 +110,10 @@ nonisolated final class StubAuthService: AuthenticationServicing, @unchecked Sen
     /// Extra latency on refresh, so two callers genuinely overlap.
     nonisolated(unsafe) var refreshDelay: Duration = .zero
     nonisolated(unsafe) var deleteResult: Result<Void, any Error> = .success(())
+    nonisolated(unsafe) var logoutResult: Result<Void, any Error> = .success(())
+    /// Optional scripts for routes whose recovery performs an immediate replay.
+    nonisolated(unsafe) var deleteResults: [Result<Void, any Error>] = []
+    nonisolated(unsafe) var logoutResults: [Result<Void, any Error>] = []
 
     private var _authenticateCalls: [AppleAuthorizationCredential] = []
     private var _refreshCalls: [String] = []
@@ -143,12 +147,19 @@ nonisolated final class StubAuthService: AuthenticationServicing, @unchecked Sen
     }
 
     func logout(accessToken: String, refreshToken: String) async throws {
-        lock.withLock { _logoutCalls += 1 }
+        let result = lock.withLock { () -> Result<Void, any Error> in
+            _logoutCalls += 1
+            return logoutResults.isEmpty ? logoutResult : logoutResults.removeFirst()
+        }
+        if case let .failure(error) = result { throw error }
     }
 
     func deleteAccount(accessToken: String, operationId: UUID) async throws {
-        lock.withLock { _deleteCalls.append((accessToken, operationId)) }
-        if case let .failure(error) = deleteResult { throw error }
+        let result = lock.withLock { () -> Result<Void, any Error> in
+            _deleteCalls.append((accessToken, operationId))
+            return deleteResults.isEmpty ? deleteResult : deleteResults.removeFirst()
+        }
+        if case let .failure(error) = result { throw error }
     }
 }
 
@@ -291,6 +302,12 @@ nonisolated final class AuthStubURLProtocol: URLProtocol {
 
 nonisolated enum AuthFixtures {
 
+    static let consentConfiguration = ConsentConfiguration(
+        privacyPolicyURL: URL(string: "https://privacy.example.test/kalorias")!,
+        privacyNoticeVersion: "privacy-test-v1",
+        healthDataConsentVersion: "health-test-v1"
+    )
+
     static let baseURL = URL(string: "https://api.example")!
 
     static func session(
@@ -328,11 +345,13 @@ nonisolated enum AuthFixtures {
 
     static func authResponse(
         userId: String = "user-1",
-        status: OnboardingServerStatus = .required
+        status: OnboardingServerStatus = .required,
+        accessToken: String = "access-1",
+        refreshToken: String = "refresh-1"
     ) -> AuthenticationResponse {
         AuthenticationResponse(
             userId: userId,
-            session: credentials(accessToken: "access-1", refreshToken: "refresh-1"),
+            session: credentials(accessToken: accessToken, refreshToken: refreshToken),
             onboardingStatus: status
         )
     }
@@ -373,7 +392,12 @@ nonisolated enum AuthFixtures {
     ) -> PendingOnboarding {
         PendingOnboarding(
             submission: submission(sessionId: sessionId),
-            consent: consented ? ConsentReceipt(grantedAt: Date(timeIntervalSince1970: 2_000)) : nil
+            consent: consented
+                ? ConsentReceipt(
+                    configuration: consentConfiguration,
+                    grantedAt: Date(timeIntervalSince1970: 2_000)
+                )
+                : nil
         )
     }
 

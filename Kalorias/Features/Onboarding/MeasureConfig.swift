@@ -32,7 +32,7 @@ nonisolated struct MeasureConfig: Decodable, Equatable, Sendable {
 
     let widget: Widget
     /// The unit answers are submitted in. Its single component has
-    /// `toCanonical == 1`; `validate.py` enforces that in CI.
+    /// `toCanonical == 1`; the backend questionnaire validator enforces that in CI.
     let canonicalUnit: String
     let defaultUnit: String
     /// Open in the unit the named question was answered in — a goal weight

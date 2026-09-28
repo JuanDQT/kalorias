@@ -5,13 +5,11 @@
 //  The onboarding questionnaire exactly as the backend serves it. The app knows
 //  **seven question types**, never a question: adding, removing or rewording a
 //  question is a deploy on the server, not an App Store release (see
-//  docs/onboarding/onboarding-contract-v1.md).
+//  kalorias-backend/specs/016-kalorias-onboarding/client-behavior.md).
 //
-//  DECODING IS STRICT ON PURPOSE. An unrecognised `type` throws rather than
-//  skipping the question, and the store falls back to the bundled copy. Skipping
-//  is the tempting move and it is wrong: if the unknown question was required,
-//  the plan gets calculated from data that was never collected, and nothing
-//  anywhere reports a problem.
+//  DECODING IS STRICT ON PURPOSE. An unrecognised question type or structural
+//  field requires an app update before the chat opens. Skipping a required
+//  question could produce a plan from data that was never collected.
 //
 //  `prompt` IS ALWAYS AN ARRAY, one chat bubble per element, even when there is
 //  one. A field that is sometimes a string and sometimes an array is the
@@ -126,17 +124,42 @@ nonisolated struct Question: Decodable, Equatable, Sendable, Identifiable {
     let date: DateConfig?
     let measure: MeasureConfig?
 
-    private enum CodingKeys: String, CodingKey {
+    private enum CodingKeys: String, CodingKey, CaseIterable {
         case id, type, prompt, skipLabel, continueLabel, confirmLabel
         case visibleIf, options, allowsCustom, validation, crossChecks
         case text, number, date, measure
         case isRequired = "required"
     }
 
+    private struct AnyCodingKey: CodingKey {
+        let stringValue: String
+        let intValue: Int?
+
+        init?(stringValue: String) {
+            self.stringValue = stringValue
+            intValue = nil
+        }
+
+        init?(intValue: Int) {
+            stringValue = String(intValue)
+            self.intValue = intValue
+        }
+    }
+
     init(from decoder: any Decoder) throws {
+        let receivedKeys = try decoder.container(keyedBy: AnyCodingKey.self).allKeys
+        let knownKeys = Set(CodingKeys.allCases.map(\.stringValue))
+        guard receivedKeys.allSatisfy({ knownKeys.contains($0.stringValue) }) else {
+            throw OnboardingError.updateRequired
+        }
+
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(String.self, forKey: .id)
-        type = try c.decode(QuestionType.self, forKey: .type)
+        let rawType = try c.decode(String.self, forKey: .type)
+        guard let decodedType = QuestionType(rawValue: rawType) else {
+            throw OnboardingError.updateRequired
+        }
+        type = decodedType
         prompt = try c.decode([String].self, forKey: .prompt)
         isRequired = try c.decodeIfPresent(Bool.self, forKey: .isRequired) ?? true
         skipLabel = try c.decodeIfPresent(String.self, forKey: .skipLabel)

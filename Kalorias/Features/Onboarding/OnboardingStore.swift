@@ -18,17 +18,9 @@
 //  already given, and there is no correct way to resolve that while they are
 //  still typing.
 //
-//  A FAILED FETCH IS NOT A FAILED ONBOARDING. The cached copy is tried, then the
-//  bundled one; `state` only becomes `.failed` when all three are gone, which in
-//  practice means the app shipped without its resource.
-//
-//  THE FIRST PAINT DOES NOT WAIT OUT THE NETWORK. `load()` gives the server a
-//  short deadline; past it the cached or bundled copy opens the chat, and the
-//  request carries on in the background purely to refresh the cache for next
-//  launch. It is never swapped in mid-session — that is the same rule as above,
-//  and it is why the deadline is safe. Without it, a build pointing at a LAN
-//  address that is not up sits on a blank spinner for the full request timeout,
-//  which is the app's whole first impression.
+//  THE QUESTIONNAIRE COMES FROM THE BACKEND. If fetching fails, the user can
+//  retry. A saved draft remains protected on the device and is resumed only
+//  after the backend returns the matching questionnaire again.
 //
 //  THE NEXT QUESTION WAITS FOR THE DISK. An answer is shown as accepted only
 //  after its draft write returns (FR-002). Advancing first and saving after
@@ -60,8 +52,10 @@ final class OnboardingStore {
         case sealing
         /// Sealed locally. The journey moves on to access from here.
         case finished
-        /// Nothing could be loaded.
+        /// The questionnaire could not be fetched.
         case failed(OnboardingError)
+        /// The backend requires question controls this build cannot render.
+        case updateRequired
     }
 
     /// A write that did not land. Shown in place, without advancing.
@@ -97,16 +91,11 @@ final class OnboardingStore {
     private let storage: OnboardingStorage
     private let pendingStorage: PendingOnboardingStorage
     private let languageCode: String
-    private let firstPaintDeadline: Duration
     private let now: () -> Date
 
     /// Called once, with the sealed payload, after it is durably on disk. The
     /// journey store uses this to leave onboarding for access.
     private let onSealed: (PendingOnboarding) -> Void
-
-    /// How long the first paint waits for the server before opening on the
-    /// copy already on the device.
-    static let defaultFirstPaintDeadline: Duration = .milliseconds(2500)
 
     private var sessionId = UUID()
     private var startedAt: Date
@@ -116,7 +105,6 @@ final class OnboardingStore {
         storage: OnboardingStorage = OnboardingStorage(),
         pendingStorage: PendingOnboardingStorage = PendingOnboardingStorage(),
         languageCode: String = Locale.current.language.languageCode?.identifier ?? "es",
-        firstPaintDeadline: Duration = OnboardingStore.defaultFirstPaintDeadline,
         now: @escaping () -> Date = Date.init,
         onSealed: @escaping (PendingOnboarding) -> Void = { _ in }
     ) {
@@ -124,7 +112,6 @@ final class OnboardingStore {
         self.storage = storage
         self.pendingStorage = pendingStorage
         self.languageCode = languageCode
-        self.firstPaintDeadline = firstPaintDeadline
         self.now = now
         self.onSealed = onSealed
         self.startedAt = now()
@@ -133,48 +120,19 @@ final class OnboardingStore {
     // MARK: Loading
 
     func load() async {
-        guard case .loading = state else { return }
+        switch state {
+        case .loading, .failed: break
+        case .asking, .sealing, .finished, .updateRequired: return
+        }
+        state = .loading
 
-        if let fetched = await fetchWithinDeadline() {
-            storage.cacheQuestionnaire(fetched.payload)
+        do {
+            let fetched = try await service.fetchQuestionnaire(languageCode: languageCode)
             await begin(with: fetched.questionnaire)
-            return
+        } catch {
+            let onboardingError = OnboardingError.from(error)
+            state = onboardingError.requiresAppUpdate ? .updateRequired : .failed(onboardingError)
         }
-        if let cached = storage.cachedQuestionnaire() {
-            await begin(with: cached)
-            return
-        }
-        if let bundled = storage.bundledQuestionnaire(languageCode: languageCode) {
-            await begin(with: bundled)
-            return
-        }
-        state = .failed(.serviceError)
-    }
-
-    /// The server's copy, but only if it arrives before the deadline.
-    private func fetchWithinDeadline() async -> FetchedQuestionnaire? {
-        await withTaskGroup(of: FetchedQuestionnaire?.self) { group in
-            group.addTask { [service, languageCode] in
-                try? await service.fetchQuestionnaire(languageCode: languageCode)
-            }
-            group.addTask { [firstPaintDeadline] in
-                try? await Task.sleep(for: firstPaintDeadline)
-                return nil
-            }
-            let first = await group.next() ?? nil
-            group.cancelAll()
-            return first
-        }
-    }
-
-    /// Fetch the questionnaire purely to refresh the cache for the next launch.
-    ///
-    /// **It never touches the running flow.** Swapping the questions under
-    /// someone mid-answer invalidates what they have already said, and there is
-    /// no correct way to resolve that while they are still typing.
-    func refreshCacheInBackground() async {
-        guard let fetched = try? await service.fetchQuestionnaire(languageCode: languageCode) else { return }
-        storage.cacheQuestionnaire(fetched.payload)
     }
 
     /// Start the flow, resuming a draft when one belongs to this questionnaire.
@@ -313,9 +271,4 @@ final class OnboardingStore {
         }
     }
 
-    /// Return to the chat after a load failure, with every answer intact.
-    func dismissFailure() {
-        guard case .failed = state, flow != nil else { return }
-        state = .asking
-    }
 }

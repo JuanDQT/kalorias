@@ -114,6 +114,27 @@ nonisolated final class PendingOnboardingStorageTests: XCTestCase {
         }
     }
 
+    func testSealedDateTimeRetainsInstantZoneOffsetAndWireBodyAfterRelaunch() async throws {
+        let instant = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-07-01T12:45:00Z"))
+        let zone = try XCTUnwrap(TimeZone(identifier: "Europe/Madrid"))
+        let answer = DateTimeAnswer(instant: instant, timeZone: zone)
+        let submission = OnboardingSubmission(
+            sessionId: UUID(), onboardingId: "plan_v1", schemaVersion: 1,
+            contentVersion: 5, locale: "es", startedAt: instant,
+            completedAt: instant,
+            answers: [.init(questionId: "appointment", type: .date, answer: .dateTime(answer))]
+        )
+        let pending = PendingOnboarding(submission: submission)
+        let before = try OnboardingSubmission.makeEncoder().encode(submission)
+
+        try await storage.save(pending)
+        let stored = try await storage.load()
+        let reloaded = try XCTUnwrap(stored)
+
+        XCTAssertEqual(reloaded.submission.answers.first?.answer, .dateTime(answer))
+        XCTAssertEqual(try OnboardingSubmission.makeEncoder().encode(reloaded.submission), before)
+    }
+
     /// Resealing after a review edit keeps the session identity, so the server
     /// still sees one plan request rather than two.
     func testResavingReplacesThePayloadKeepingItsSessionId() async throws {
@@ -132,26 +153,34 @@ nonisolated final class PendingOnboardingStorageTests: XCTestCase {
     func testFreshPayloadHasNoConsentAndIsNotUploadable() async throws {
         let pending = PendingOnboarding(submission: makeSubmission())
         XCTAssertNil(pending.consent)
-        XCTAssertFalse(pending.isReadyToUpload)
+        XCTAssertFalse(pending.isReadyToUpload(using: AuthFixtures.consentConfiguration))
     }
 
     func testGrantingConsentPersistsTheReceipt() async throws {
         try await storage.save(PendingOnboarding(submission: makeSubmission()))
 
-        let receipt = ConsentReceipt(grantedAt: Date(timeIntervalSince1970: 5_000))
+        let receipt = ConsentReceipt(
+            configuration: AuthFixtures.consentConfiguration,
+            grantedAt: Date(timeIntervalSince1970: 5_000)
+        )
         let returned = try await storage.grantConsent(receipt)
 
         XCTAssertEqual(returned.consent, receipt)
         let storedConsent = try await storage.load()?.consent
         XCTAssertEqual(storedConsent, receipt)
-        XCTAssertTrue(returned.isReadyToUpload)
+        XCTAssertTrue(returned.isReadyToUpload(using: AuthFixtures.consentConfiguration))
     }
 
     func testGrantingConsentDoesNotAlterTheSubmission() async throws {
         let submission = makeSubmission()
         try await storage.save(PendingOnboarding(submission: submission))
 
-        try await storage.grantConsent(ConsentReceipt(grantedAt: Date(timeIntervalSince1970: 5_000)))
+        try await storage.grantConsent(
+            ConsentReceipt(
+                configuration: AuthFixtures.consentConfiguration,
+                grantedAt: Date(timeIntervalSince1970: 5_000)
+            )
+        )
 
         let storedSubmission = try await storage.load()?.submission
         XCTAssertEqual(storedSubmission, submission)
@@ -165,12 +194,14 @@ nonisolated final class PendingOnboardingStorageTests: XCTestCase {
             grantedAt: Date(timeIntervalSince1970: 5_000)
         )
         let pending = PendingOnboarding(submission: makeSubmission(), consent: stale)
-        XCTAssertFalse(pending.isReadyToUpload)
+        XCTAssertFalse(pending.isReadyToUpload(using: AuthFixtures.consentConfiguration))
     }
 
     func testGrantingConsentWithNothingSealedFails() async {
         do {
-            _ = try await storage.grantConsent(ConsentReceipt(grantedAt: .now))
+            _ = try await storage.grantConsent(
+                ConsentReceipt(configuration: AuthFixtures.consentConfiguration, grantedAt: .now)
+            )
             XCTFail("Consent was granted against no payload.")
         } catch {
             XCTAssertNotNil(error as? PendingOnboardingStorage.StorageError)
@@ -241,7 +272,12 @@ nonisolated final class PendingOnboardingStorageTests: XCTestCase {
     func testPayloadSurvivesANewStorageInstance() async throws {
         let sessionId = UUID()
         try await storage.save(PendingOnboarding(submission: makeSubmission(sessionId: sessionId)))
-        try await storage.grantConsent(ConsentReceipt(grantedAt: Date(timeIntervalSince1970: 5_000)))
+        try await storage.grantConsent(
+            ConsentReceipt(
+                configuration: AuthFixtures.consentConfiguration,
+                grantedAt: Date(timeIntervalSince1970: 5_000)
+            )
+        )
 
         let relaunched = PendingOnboardingStorage(directory: directory)
         let stored = try await relaunched.load()
@@ -249,7 +285,7 @@ nonisolated final class PendingOnboardingStorageTests: XCTestCase {
 
         XCTAssertEqual(loaded.submission.sessionId, sessionId)
         XCTAssertNotNil(loaded.consent)
-        XCTAssertTrue(loaded.isReadyToUpload)
+        XCTAssertTrue(loaded.isReadyToUpload(using: AuthFixtures.consentConfiguration))
     }
 }
 
@@ -316,17 +352,6 @@ nonisolated final class ProtectedDraftStorageTests: XCTestCase {
     func testAMissingDraftIsAbsentRatherThanUnreadable() async throws {
         let empty = try await storage.draft()
         XCTAssertNil(empty)
-    }
-
-    /// The public questionnaire cache is *not* protected: it is the same content
-    /// every user downloads, and encrypting it would only stop a locked phone
-    /// from opening the chat.
-    func testQuestionnaireCacheIsNotInTheProtectedDirectory() async throws {
-        storage.cacheQuestionnaire(Data("{}".utf8))
-
-        XCTAssertTrue(FileManager.default.fileExists(
-            atPath: directory.appending(path: "questionnaire.json").path
-        ))
     }
 
     func testDraftIsDroppedWhenTheQuestionnaireHasMovedOn() async throws {

@@ -1,0 +1,55 @@
+default_platform(:ios)
+
+platform :ios do
+  # Autenticación con App Store Connect
+  private_lane :api_key do
+    app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_content: ENV["ASC_KEY_CONTENT"]
+    )
+  end
+
+  lane :add_device do |options|
+    key = api_key
+
+    register_device(
+      name: options[:name],
+      udid: options[:udid],
+      api_key: key
+    )
+
+    match(
+      type: "development",
+      api_key: key,
+      force_for_new_devices: true
+    )
+  end
+
+
+  # Ejecuta los tests
+  lane :tests do
+    run_tests(
+      scheme: "Kalorias"
+    )
+  end
+
+  # Genera la build y la sube a TestFlight
+  lane :beta do
+    key = api_key
+
+    match(
+      type: "appstore",
+      api_key: key,
+      readonly: true
+    )
+
+    build_app(
+      scheme: "Kalorias"
+    )
+
+    upload_to_testflight(
+      api_key: key
+    )
+  end
+end

@@ -91,7 +91,7 @@ nonisolated final class AppleCredentialStateServiceTests: XCTestCase {
             auth: auth,
             submissions: StubSubmissionService(),
             credentialState: checker,
-            onboardingStorage: OnboardingStorage(directory: directory, bundle: .main),
+            onboardingStorage: OnboardingStorage(directory: directory),
             pendingStorage: PendingOnboardingStorage(
                 directory: directory.appending(path: "Protected", directoryHint: .isDirectory)
             ),

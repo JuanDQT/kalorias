@@ -89,9 +89,8 @@ contains onboarding answers before registration succeeds.
 5. **Given** the last required answer is accepted, **When** the flow advances, **Then** a complete
    pending submission including its original start time and local completion time is saved
    atomically before the access screen appears.
-6. **Given** the device is offline, **When** a bundled or cached questionnaire is available,
-   **Then** the user can complete the onboarding and reach the access screen with all answers
-   intact.
+6. **Given** the questionnaire cannot be obtained from the backend, **When** onboarding loads,
+   **Then** the app shows a retryable error and does not use a cached or bundled questionnaire.
 
 ---
 
@@ -219,8 +218,12 @@ never appear in logs, revocation gates access, and account deletion removes serv
 
 ### Edge Cases
 
-- **Questionnaire fetch before registration**: `GET` remains public and may be cached because it
-  contains product content only. The answer submission is a separate authenticated `POST`.
+- **Questionnaire fetch before registration**: `GET` remains public, but the client neither caches
+  nor bundles its response. A fetch failure is retryable. Answer submission remains a separate
+  authenticated `POST`.
+- **Questionnaire newer than the app**: an unsupported `schemaVersion`, question `type`, or required
+  structural field blocks onboarding before any question is shown. The user sees a mandatory update
+  screen with no option to retry into or continue through an older questionnaire.
 - **Final-answer crash window**: the complete pending payload is atomically committed before the
   UI changes to access. Relaunch can therefore never show access with no payload behind it.
 - **Apple sheet cancelled**: cancellation is not presented as an error and does not mutate the
@@ -281,6 +284,13 @@ never appear in logs, revocation gates access, and account deletion removes serv
   values, or free text while the onboarding is being answered.
 - **FR-004**: Fetching public questionnaire content MUST remain distinct from submitting user
   answers; a public fetch MUST NOT include the local draft or any stable account/device identity.
+- **FR-004a**: If the fetched questionnaire requires a schema, question type, or structural value
+  this build cannot render correctly, the app MUST show a non-dismissible mandatory-update gate
+  before displaying any onboarding question. It MUST NOT retry into, cache, or continue with older
+  questionnaire content. Network and ordinary service failures remain separately retryable.
+- **FR-004b**: A `date` question in `dateTime` mode MUST collect date, hour and minute, persist the
+  absolute instant plus its selected IANA time zone and UTC offset, and submit an RFC 3339 value
+  with explicit offset. Plain `date` mode MUST remain a calendar day without time-zone conversion.
 - **FR-005**: On completion, the app MUST create and atomically persist a sealed pending submission
   before navigating to access.
 - **FR-006**: The sealed submission MUST preserve `sessionId`, `onboardingId`, `schemaVersion`,

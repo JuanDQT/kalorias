@@ -26,8 +26,8 @@ while [contracts/auth-api-v1.md](./contracts/auth-api-v1.md) is the client-facin
 **Primary Dependencies**: SwiftUI, AuthenticationServices, Security/Keychain, CryptoKit,
 Foundation/URLSession, Observation, SwiftData; no third-party dependency
 
-**Storage**: SwiftData for meal history; Application Support JSON for questionnaire cache and
-protected onboarding draft/pending payload; Keychain for sessions and durable account identity
+**Storage**: SwiftData for meal history; protected Application Support JSON for onboarding
+draft/pending payload; Keychain for sessions and durable account identity
 
 **Testing**: XCTest unit and integration-style URL protocol tests in `KaloriasTests`; UI tests stay
 disabled unless the maintainer explicitly opts in
@@ -40,10 +40,12 @@ disabled unless the maintainer explicitly opts in
 accepted answer durably saved and reflected in under 100 ms; owner-filtered history/progress
 queries remain responsive at 10,000 meals; state transitions render at native frame cadence
 
-**Constraints**: Questionnaire must remain usable offline from bundled/cached content; no personal
-answer leaves the device before backend registration and explicit health-data consent; no secrets
-or tokens in source, preferences, files, telemetry, or logs; refresh is single-flight and a failed
-request is retried at most once; no custom authentication web view
+**Constraints**: Questionnaire content is backend-only and unavailable offline; accepted answers
+must survive app termination in protected local storage and resume only after fetching the matching
+questionnaire version; unsupported questionnaire structures must block behind a mandatory App Store
+update gate before any question is shown; no personal answer leaves the device before backend registration and explicit
+health-data consent; no secrets or tokens in source, preferences, files, telemetry, or logs; refresh
+is single-flight and a failed request is retried at most once; no custom authentication web view
 
 **Scale/Scope**: One first-run journey, four new root gates (access, consent, finalization, deletion
 recovery), one account-settings destination, four auth/account endpoints, two existing endpoints upgraded to
@@ -180,7 +182,8 @@ the existing `KaloriasTests` group and Sources build phase in `project.pbxproj`.
 `OnboardingStore` stops invoking the submission service. Its final intent builds an immutable
 `PendingOnboarding` from the draft, writes it successfully, and only then reports local completion.
 Draft and pending files are separate so the access screen can offer “Review answers.” Sensitive
-writes combine `.atomic` and `.completeFileProtection`; questionnaire cache remains non-sensitive.
+writes combine `.atomic` and `.completeFileProtection`. Questionnaire content is obtained only from
+the backend and is never persisted or shipped in the app.
 
 ### 2. Replace presentation flags with a root state machine
 

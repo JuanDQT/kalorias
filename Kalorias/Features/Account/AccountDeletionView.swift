@@ -22,10 +22,13 @@
 //  situation instead of an account that is gone on the server and present here.
 //
 
+import AuthenticationServices
 import SwiftUI
 
 struct AccountDeletionView: View {
     @Environment(AppJourneyStore.self) private var journey
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var requests = AppleSignInRequestFactory()
 
     var body: some View {
         ZStack {
@@ -45,8 +48,12 @@ struct AccountDeletionView: View {
                         .transition(AppMotion.subtleTransition)
                 }
 
-                if journey.deletionError != nil {
-                    Text("account.delete.error")
+                if let deletionError = journey.deletionError {
+                    Text(
+                        deletionError == .reauthenticationRequired
+                            ? "account.delete.reauthenticate.body"
+                            : "account.delete.error"
+                    )
                         .supportingTextRole()
                         .foregroundStyle(AppColor.danger)
                         .multilineTextAlignment(.center)
@@ -55,7 +62,21 @@ struct AccountDeletionView: View {
                         .transition(AppMotion.subtleTransition)
                 }
 
-                if !journey.isDeleting {
+                if journey.deletionError == .reauthenticationRequired {
+                    appleButton
+
+                    if let notice = journey.deletionAuthorizationNotice {
+                        Text(String(localized: notice.messageKey))
+                            .supportingTextRole()
+                            .foregroundStyle(
+                                notice.isUserCancellation
+                                    ? AppColor.textSecondary
+                                    : AppColor.danger
+                            )
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("account.deleteReauthenticationError")
+                    }
+                } else if !journey.isDeleting {
                     Button {
                         Task { await journey.retryAccountDeletion() }
                     } label: {
@@ -65,7 +86,14 @@ struct AccountDeletionView: View {
                     .buttonStyle(.borderedProminent)
                     .tint(AppColor.brandPrimaryFill)
                     .controlSize(.large)
+                    .disabled(journey.deletionSecondsUntilRetry != nil)
                     .accessibilityIdentifier("account.deleteContinueButton")
+
+                    if journey.deletionSecondsUntilRetry != nil {
+                        Text("account.delete.rateLimited")
+                            .supportingTextRole()
+                            .foregroundStyle(AppColor.textSecondary)
+                    }
                 }
             }
             .frame(maxWidth: 520)
@@ -74,6 +102,43 @@ struct AccountDeletionView: View {
         .animation(AppMotion.subtle, value: journey.isDeleting)
         .animation(AppMotion.subtle, value: journey.deletionError)
         .accessibilityIdentifier("account.deleteScreen")
+    }
+
+    private var appleButton: some View {
+        SignInWithAppleButton(.continue) { request in
+            requests.configure(request)
+        } onCompletion: { result in
+            handle(result)
+        }
+        .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+        .frame(height: 50)
+        .frame(maxWidth: .infinity)
+        .disabled(journey.isAuthenticating)
+        .opacity(journey.isAuthenticating ? 0.5 : 1)
+        .accessibilityIdentifier("account.deleteAppleButton")
+    }
+
+    private func handle(_ result: Result<ASAuthorization, any Error>) {
+        switch result {
+        case let .success(authorization):
+            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential
+            else {
+                requests.clear()
+                journey.accountDeletionAuthorizationDidFail(.unexpectedCredentialType)
+                return
+            }
+            switch requests.consume(credential) {
+            case let .success(mapped):
+                Task { await journey.reauthenticateAccountDeletion(with: mapped) }
+            case let .failure(error):
+                journey.accountDeletionAuthorizationDidFail(error)
+            }
+
+        case let .failure(error):
+            requests.clear()
+            let cancelled = (error as? ASAuthorizationError)?.code == .canceled
+            journey.accountDeletionAuthorizationDidFail(cancelled ? .cancelled : .failed)
+        }
     }
 }
 

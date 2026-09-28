@@ -64,9 +64,16 @@ nonisolated struct RemoteOnboardingSubmissionService: OnboardingSubmitting {
         )
 
         let (data, http) = try await client.send(request, allowsReplay: true)
+        let requestId = http.value(forHTTPHeaderField: "X-Request-Id")
 
         guard http.statusCode == 200 else {
-            throw Self.mapError(status: http.statusCode, data: data)
+            let mapped = Self.mapError(status: http.statusCode, data: data)
+            AuthLog.failure(
+                .onboardingSubmission,
+                outcome: String(describing: mapped),
+                requestId: requestId
+            )
+            throw mapped
         }
 
         let envelope = try OnboardingSubmission.makeDecoder()
@@ -76,6 +83,7 @@ nonisolated struct RemoteOnboardingSubmissionService: OnboardingSubmitting {
             // Opening the app on that would open it with no plan behind it.
             throw OnboardingError.invalidResponse
         }
+        AuthLog.success(.onboardingSubmission, requestId: requestId)
         return envelope.data
     }
 
@@ -113,18 +121,19 @@ nonisolated struct RemoteOnboardingSubmissionService: OnboardingSubmitting {
         let code = (try? JSONDecoder().decode(RemoteAuthService.ErrorEnvelope.self, from: data))?
             .error.code
 
-        switch status {
-        case 401:
+        switch (status, code) {
+        case (401, "authentication_required"):
             return .authenticationRequired
-        case 409:
-            switch code {
-            case "onboarding_already_complete": return .alreadyComplete
-            case "consent_version_outdated": return .consentOutdated
-            default: return .idempotencyMismatch
-            }
-        case 422:
+        case (409, "onboarding_already_complete"):
+            return .alreadyComplete
+        case (409, "idempotency_payload_mismatch"):
+            return .idempotencyMismatch
+        case (409, "consent_version_outdated"):
+            return .consentOutdated
+        case (422, "invalid_onboarding"):
             return .invalidOnboarding
-        case 429, 500, 502, 503, 504:
+        case (429, "onboarding_rate_limited"),
+             (503, "onboarding_service_error"):
             return .serviceError
         default:
             return .serviceError

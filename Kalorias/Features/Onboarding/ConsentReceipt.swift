@@ -15,15 +15,26 @@
 //  consent text that was on screen, so a later change to that text cannot
 //  retroactively claim to have been agreed to.
 //
-//  THE VERSIONS ARE COMPILED IN, NOT FETCHED. Server-delivered consent copy can
-//  change silently under the same version string, which would make the receipt a
-//  record of nothing. The app ships the text and the version together.
+//  THE VERSIONS ARE BUILD CONFIGURATION, NOT SOURCE FALLBACKS. Product/Legal
+//  supplies them with the localized copy and policy URL; an incomplete build is
+//  unable to mint a receipt or upload health data.
 //
 //  ONLY THE AFFIRMATIVE ACTION CREATES ONE. Opening the notice does not, "Not
 //  now" does not, and a successful Apple sign-in does not.
 //
 
 import Foundation
+
+/// Product/Legal-owned values that identify the exact notice shipped by this
+/// build. They arrive through build configuration; source code supplies no
+/// fallback and therefore cannot accidentally mint a provisional receipt.
+nonisolated struct ConsentConfiguration: Equatable, Sendable {
+    static let maximumVersionLength = 32
+
+    let privacyPolicyURL: URL
+    let privacyNoticeVersion: String
+    let healthDataConsentVersion: String
+}
 
 nonisolated struct ConsentReceipt: Codable, Equatable, Sendable {
 
@@ -36,22 +47,10 @@ nonisolated struct ConsentReceipt: Codable, Equatable, Sendable {
     /// audit authority.
     let grantedAt: Date
 
-    /// The versions this build ships. Changing the on-screen copy means changing
-    /// these, which is precisely the point: an old receipt then stops matching
-    /// and the user is asked again.
-    ///
-    /// Approved legal wording and its final version identifiers are a release
-    /// input (see the plan's Delivery Boundaries). These constants and the
-    /// `consent.*` / `privacy.*` catalog entries move together.
-    enum Version {
-        static let privacyNotice = "2026-09-08"
-        static let healthDataConsent = "2026-09-08"
-    }
-
     /// The receipt for the copy this build displays.
-    init(grantedAt: Date) {
-        self.privacyNoticeVersion = Version.privacyNotice
-        self.healthDataConsentVersion = Version.healthDataConsent
+    init(configuration: ConsentConfiguration, grantedAt: Date) {
+        self.privacyNoticeVersion = configuration.privacyNoticeVersion
+        self.healthDataConsentVersion = configuration.healthDataConsentVersion
         self.grantedAt = grantedAt
     }
 
@@ -64,8 +63,8 @@ nonisolated struct ConsentReceipt: Codable, Equatable, Sendable {
 
     /// Whether this receipt still refers to the copy this build shows. A stored
     /// receipt for retired wording cannot be reused (UI contract, `consent.outdated`).
-    var matchesCurrentVersions: Bool {
-        privacyNoticeVersion == Version.privacyNotice
-            && healthDataConsentVersion == Version.healthDataConsent
+    func matches(_ configuration: ConsentConfiguration) -> Bool {
+        privacyNoticeVersion == configuration.privacyNoticeVersion
+            && healthDataConsentVersion == configuration.healthDataConsentVersion
     }
 }

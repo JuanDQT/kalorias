@@ -9,16 +9,15 @@
 //  from inside the payload, which would be an open redirect wearing a different
 //  hat.
 //
-//  THE QUESTIONNAIRE IS CACHEABLE, THE SUBMISSION IS NOT. The `GET` is public
-//  content that changes on deploys, so it uses the shared session and lets
-//  `ETag` do its job; the `POST` carries health data and goes out authenticated,
-//  on an ephemeral session that keeps no cache and no cookies.
+//  THE QUESTIONNAIRE IS FETCHED FRESH. The GET uses an ephemeral session with
+//  no URL cache. The POST carries health data and goes out authenticated, on
+//  an ephemeral session that keeps no cache and no cookies.
 //
 //  THE `GET` STAYS ANONYMOUS, AND THAT IS A REQUIREMENT, NOT AN OVERSIGHT
 //  (FR-004, FR-045). It carries no `Authorization`, no user id, no device id and
 //  no analytics identity, because it happens before an account exists and must
 //  not become a way to correlate a person with the questionnaire they were
-//  served. `ETag` is the only state it keeps.
+//  served.
 //
 //  THE `POST` IS THE OPPOSITE, since feature 010: a valid Kalorias bearer is
 //  mandatory, and it goes through `AuthenticatedHTTPClient` so token refresh and
@@ -33,11 +32,18 @@ import Foundation
 
 nonisolated struct RemoteOnboardingService: OnboardingFetching {
 
+    private struct SchemaEnvelope: Decodable {
+        struct Data: Decodable {
+            let schemaVersion: Int
+        }
+
+        let data: Data
+    }
+
     static let onboardingPath = "/api/v1/kalorias/onboarding"
 
     /// Shorter than the analysis timeout on purpose: this is a small JSON
-    /// document, not a model waiting on a photo. A minute of spinner before the
-    /// bundled copy appears would be a worse first launch than no network at all.
+    /// document, not a model waiting on a photo.
     static let requestTimeout: TimeInterval = 15
     static let resourceTimeout: TimeInterval = 30
 
@@ -53,6 +59,8 @@ nonisolated struct RemoteOnboardingService: OnboardingFetching {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = requestTimeout
         configuration.timeoutIntervalForResource = resourceTimeout
+        configuration.urlCache = nil
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         return configuration
     }
 
@@ -74,7 +82,7 @@ nonisolated struct RemoteOnboardingService: OnboardingFetching {
         components?.queryItems = [URLQueryItem(name: "stage", value: "onboarding")]
         guard let url = components?.url else { throw OnboardingError.serviceError }
 
-        var request = URLRequest(url: url)
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
         request.setValue(languageCode, forHTTPHeaderField: "Accept-Language")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
@@ -82,15 +90,22 @@ nonisolated struct RemoteOnboardingService: OnboardingFetching {
         guard let http = response as? HTTPURLResponse else { throw OnboardingError.serviceError }
         guard http.statusCode == 200 else { throw OnboardingError.serviceError }
 
-        let questionnaire = try JSONDecoder().decode(QuestionnaireEnvelope.self, from: data).data
-
-        // Refused whole rather than partially understood. Skipping the parts
-        // this build does not recognise is how a plan gets calculated from data
-        // that was never collected.
-        guard questionnaire.schemaVersion <= Questionnaire.supportedSchemaVersion else {
-            throw OnboardingError.unsupportedSchema(version: questionnaire.schemaVersion)
+        let schema = try JSONDecoder().decode(SchemaEnvelope.self, from: data).data.schemaVersion
+        guard schema <= Questionnaire.supportedSchemaVersion else {
+            throw OnboardingError.unsupportedSchema(version: schema)
         }
 
-        return FetchedQuestionnaire(questionnaire: questionnaire, payload: data)
+        let questionnaire: Questionnaire
+        do {
+            questionnaire = try JSONDecoder().decode(QuestionnaireEnvelope.self, from: data).data
+        } catch DecodingError.dataCorrupted(let context)
+            where ["widget", "mode", "displayFormat", "operator", "severity", "rule", "visibleIf"]
+                .contains(context.codingPath.last?.stringValue ?? "") {
+            // These are closed structural choices. A value this build does not
+            // know would change how a question works, even under schema v1.
+            throw OnboardingError.updateRequired
+        }
+
+        return FetchedQuestionnaire(questionnaire: questionnaire)
     }
 }

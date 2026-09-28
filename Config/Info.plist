@@ -23,7 +23,13 @@
 	<key>KaloriasAPIBaseURL</key>
 	<string>$(KALORIAS_API_BASE_URL)</string>
 	<key>KaloriasPrivacyPolicyURL</key>
-	<string>$(KALORIAS_PRIVACY_POLICY_URL)</string>
+	<string>$(PRIVACY_POLICY_URL)</string>
+	<key>KaloriasPrivacyNoticeVersion</key>
+	<string>$(PRIVACY_NOTICE_VERSION)</string>
+	<key>KaloriasHealthDataConsentVersion</key>
+	<string>$(HEALTH_DATA_CONSENT_VERSION)</string>
+	<key>KaloriasAppStoreURL</key>
+	<string>$(APP_STORE_URL)</string>
 	<key>LSApplicationCategoryType</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>

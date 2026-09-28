@@ -6,7 +6,7 @@ The feature deliberately uses three persistence technologies for three different
 
 | Domain | Persistence | Contents |
 |---|---|---|
-| Public content | Application Support cache/bundle | Questionnaire definitions only |
+| Public content | Network response only | Questionnaire definitions are never persisted or bundled |
 | Sensitive in-progress data | Application Support with complete file protection | Draft answers and sealed pending onboarding |
 | Credentials and durable identity | Non-synchronizing device-only Keychain | Kalorias session and known-account marker |
 | Account-owned history | SwiftData plus protected image files | Meals scoped by backend user ID |
@@ -30,6 +30,9 @@ Mutable local progress written after every accepted answer.
 | `startedAt` | `Date` | Set once using UTC absolute time |
 | `updatedAt` | `Date` | Updated after a durable answer/change |
 | `answers` | `[String: OnboardingAnswer]` | Keyed by known question ID; retains valid shadowed conditional answers needed to resume/edit |
+
+`OnboardingAnswer.date` stores calendar components only. `OnboardingAnswer.dateTime` stores the
+absolute instant, the IANA time-zone identifier, and the UTC offset captured for that instant.
 
 **Validation/invariants**:
 
