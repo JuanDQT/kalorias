@@ -144,7 +144,11 @@ struct TextAnswerInput: View {
             .buttonStyle(.borderedProminent)
             .tint(AppColor.brandPrimaryFill)
             .controlSize(.large)
-            .disabled(trimmed.count < (question.validation?.minLength ?? (question.isRequired ? 1 : 0)))
+            // An optional empty answer must use the explicit Skip action. If
+            // Confirm encoded "", Laravel would normalize it to null before
+            // domain validation and the sealed retry would no longer match
+            // what the user saw.
+            .disabled(trimmed.isEmpty || trimmed.count < (question.validation?.minLength ?? 1))
         }
         .onAppear {
             if case let .text(existing) = initial { value = existing }

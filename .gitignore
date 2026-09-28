@@ -26,3 +26,4 @@ Config/Secrets.xcconfig
 
 docs/
 *.tgz
+fastlane/report.xml

@@ -986,6 +986,54 @@
         }
       }
     },
+    "consent.deferred.dismiss" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entendido"
+          }
+        }
+      }
+    },
+    "consent.deferred.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing was sent. You can accept whenever you're ready to create your plan."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se ha enviado nada. Puedes aceptar cuando quieras crear tu plan."
+          }
+        }
+      }
+    },
+    "consent.deferred.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your answers are still saved"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tus respuestas siguen guardadas"
+          }
+        }
+      }
+    },
     "consent.notNow" : {
       "localizations" : {
         "en" : {

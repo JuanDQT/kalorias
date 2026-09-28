@@ -41,6 +41,8 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Kalorias uses the camera to take a photo of your food and estimate its calories.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Kalorias connects to your development server on the local network.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

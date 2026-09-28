@@ -31,6 +31,7 @@ struct HealthDataConsentView: View {
     /// Explicitly off every time this gate is presented. Reading the notice or
     /// signing in never changes it.
     @State private var hasAffirmedConsent = false
+    @State private var isShowingDeferralConfirmation = false
 
     var body: some View {
         ZStack {
@@ -102,6 +103,7 @@ struct HealthDataConsentView: View {
 
                     Button {
                         journey.declineHealthDataConsent()
+                        isShowingDeferralConfirmation = true
                     } label: {
                         Text("consent.notNow").frame(maxWidth: .infinity)
                     }
@@ -120,6 +122,14 @@ struct HealthDataConsentView: View {
         .accessibilityIdentifier("consent.screen")
         .sheet(isPresented: $isShowingPrivacyNotice) {
             PrivacyNoticeView(configuration: journey.consentConfiguration)
+        }
+        .alert(
+            "consent.deferred.title",
+            isPresented: $isShowingDeferralConfirmation
+        ) {
+            Button("consent.deferred.dismiss", role: .cancel) {}
+        } message: {
+            Text("consent.deferred.message")
         }
     }
 

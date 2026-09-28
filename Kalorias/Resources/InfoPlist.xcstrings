@@ -41,6 +41,23 @@
           }
         }
       }
+    },
+    "NSLocalNetworkUsageDescription" : {
+      "comment" : "Local-network permission used by Debug builds to reach the development backend",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kalorias connects to your development server on the local network."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kalorias se conecta a tu servidor de desarrollo en la red local."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

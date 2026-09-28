@@ -258,6 +258,26 @@ nonisolated final class AppJourneyStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testDecliningConsentKeepsThePayloadLocalAndSendsNothing() async throws {
+        let original = try await writePending(consented: false)
+        let harness = makeHarness(
+            session: AuthFixtures.session(onboardingStatus: .required),
+            consentConfiguration: nil
+        )
+        await harness.store.bootstrap()
+        await harness.store.acceptHealthDataConsent()
+
+        harness.store.declineHealthDataConsent()
+
+        let stored = try await harness.pendingStorage.load()
+        XCTAssertEqual(harness.store.phase, .consent)
+        XCTAssertNil(harness.store.consentError)
+        XCTAssertEqual(harness.store.pending, original)
+        XCTAssertEqual(stored, original)
+        XCTAssertTrue(harness.submissions.submissions.isEmpty)
+    }
+
+    @MainActor
     func testARequiredSessionWithAConsentedPayloadWaitsOnTheFinalizationScreen() async throws {
         _ = try await writePending(consented: true)
         let harness = makeHarness(session: AuthFixtures.session(onboardingStatus: .required))
